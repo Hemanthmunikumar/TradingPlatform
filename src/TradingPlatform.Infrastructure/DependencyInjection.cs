@@ -4,11 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Orders;
 using TradingPlatform.Application.Interfaces.Risk;
 using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
 using TradingPlatform.Infrastructure.MarketData;
+using TradingPlatform.Infrastructure.Orders;
 using TradingPlatform.Infrastructure.Persistence;
 using TradingPlatform.Infrastructure.Risk;
 using TradingPlatform.Infrastructure.Security;
@@ -37,6 +39,12 @@ public static class DependencyInjection
 
         // Pre-Order Risk Validation & Safety Engine
         services.AddScoped<IRiskValidationService, RiskValidationService>();
+
+        // Order Lifecycle, State Machine & Position Management
+        services.AddSingleton<IIndianBrokerageCalculator, IndianBrokerageCalculator>();
+        services.AddSingleton<IOrderStateMachine, OrderStateMachine>();
+        services.AddScoped<IPositionService, PositionService>();
+        services.AddScoped<IOrderService, OrderService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();

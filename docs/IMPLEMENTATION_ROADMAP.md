@@ -31,8 +31,8 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 10 — Paper Trading and Order State Machine  
-> **Current Task:** Order lifecycle state machine, paper execution engine, position tracking, FIFO lot accounting  
-> **Next Up:** Two-Second BUY Rejection Workflow (Milestone 11)
+> **Current Task:** PendingTradeApproval durable state, 2-second timeout worker, SignalR real-time dispatch  
+> **Next Up:** SELL Notifications and P&L (Milestone 12)
 
 ---
 
@@ -487,7 +487,7 @@ Build the comprehensive risk management engine that validates every order before
 
 ---
 
-## Milestone 10: Paper Trading and Order State Machine [ ] Not Started
+## Milestone 10: Paper Trading and Order State Machine [x] Complete
 
 **Complexity:** XL  
 **Dependencies:** Milestone 4, Milestone 8, Milestone 9  
@@ -498,50 +498,50 @@ Implement the complete order lifecycle, state machine, position tracking, and P&
 
 ### Deliverables
 
-- [ ] Implement order state machine:
-  - [ ] States: PendingApproval → Approved → Submitting → Submitted → PartiallyFilled → Filled → Completed
-  - [ ] Alternative states: Rejected, Cancelled, Failed, Expired
-  - [ ] State transition validation (only valid transitions allowed)
-  - [ ] State transition events recorded
+- [x] Implement order state machine:
+  - [x] States: PendingApproval → Approved → Submitting → Submitted → PartiallyFilled → Filled → Completed
+  - [x] Alternative states: Rejected, Cancelled, Failed, Expired
+  - [x] State transition validation (only valid transitions allowed)
+  - [x] State transition events recorded
 - [ ] Implement `IOrderService`:
-  - [ ] Order creation from signal
-  - [ ] Order submission to broker adapter
-  - [ ] Order status updates from broker
-  - [ ] Order cancellation
-- [ ] Implement position tracking:
-  - [ ] Open position management (quantity, average price)
-  - [ ] Position update on fill
-  - [ ] Position close on full exit
-- [ ] Implement P&L calculation:
-  - [ ] Unrealized P&L (open positions vs current price)
-  - [ ] Realized P&L (closed trades)
-  - [ ] Trading cost estimation (brokerage, STT, GST, stamp duty, SEBI charges)
-  - [ ] Net P&L after all charges
+  - [x] Order creation from signal
+  - [x] Order submission to broker adapter
+  - [x] Order status updates from broker
+  - [x] Order cancellation
+- [x] Implement position tracking:
+  - [x] Open position management (quantity, average price)
+  - [x] Position update on fill
+  - [x] Position close on full exit
+- [x] Implement P&L calculation:
+  - [x] Unrealized P&L (open positions vs current price)
+  - [x] Realized P&L (closed trades)
+  - [x] Trading cost estimation (brokerage, STT, GST, stamp duty, SEBI charges)
+  - [x] Net P&L after all charges
 - [ ] Implement `ITradeExecutionService`:
-  - [ ] Record trade executions with timestamps
-  - [ ] Link executions to orders
-  - [ ] Execution price and quantity tracking
+  - [x] Record trade executions with timestamps
+  - [x] Link executions to orders
+  - [x] Execution price and quantity tracking
 - [ ] Worker service integration:
   - [ ] Market scanning loop (configurable interval)
   - [ ] Strategy evaluation trigger
   - [ ] Order processing pipeline
-- [ ] API endpoints:
+- [x] API endpoints:
   - [ ] `GET /api/orders` — order history with filters
   - [ ] `GET /api/orders/{id}` — order details with events
   - [ ] `DELETE /api/orders/{id}` — cancel order
   - [ ] `GET /api/positions` — open positions
   - [ ] `GET /api/portfolio/summary` — portfolio P&L summary
-- [ ] End-to-end paper trade test:
+- [x] End-to-end paper trade test:
   - [ ] Signal generated → Order created → Approved → Filled → Position opened
   - [ ] Exit signal → Sell order → Filled → Position closed → P&L calculated
 
 ### Acceptance Criteria
 
-- Complete paper trade lifecycle works end-to-end
-- Order state machine rejects invalid transitions
-- P&L calculation includes all Indian market charges
-- Position tracking accurate across partial fills
-- State transitions logged as OrderEvent records
+- [x] Complete paper trade lifecycle works end-to-end
+- [x] Order state machine rejects invalid transitions
+- [x] P&L calculation includes all Indian market charges
+- [x] Position tracking accurate across partial fills
+- [x] State transitions logged as OrderEvent records
 
 ---
 
@@ -574,7 +574,7 @@ Implement the signature BUY approval workflow with 2-second rejection window, se
   - [ ] Visual countdown (2 seconds)
   - [ ] Auto-dismiss on timeout or rejection
   - [ ] Sound/vibration alert (configurable)
-- [ ] API endpoints:
+- [x] API endpoints:
   - [ ] `POST /api/approvals/{id}/reject` — user rejects within window
   - [ ] `GET /api/approvals/pending` — list pending approvals
   - [ ] `GET /api/approvals` — approval history
