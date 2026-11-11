@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Contracts.Approvals;
+using TradingPlatform.Contracts.Notifications;
 using TradingPlatform.Contracts.Orders;
 using TradingPlatform.Contracts.Trades;
 
@@ -29,7 +30,7 @@ public class LoggingTradingNotificationService(ILogger<LoggingTradingNotificatio
 
     public Task PublishOrderFilledAsync(OrderDto order, CancellationToken ct = default)
     {
-        logger.LogInformation("NOTIFICATION: Order Filled {OrderId} ({Side} {Qty} {Symbol} @ {AvgPrice})", order.Id, order.Side, order.Quantity, order.Symbol, order.AveragePrice);
+        logger.LogInformation("NOTIFICATION: Order Filled {OrderId} ({Side} {Qty} {Symbol} @ {Price})", order.Id, order.Side, order.Quantity, order.Symbol, order.AveragePrice);
         return Task.CompletedTask;
     }
 
@@ -58,6 +59,24 @@ public class LoggingTradingNotificationService(ILogger<LoggingTradingNotificatio
     {
         logger.LogInformation("NOTIFICATION: TARGET REACHED for {Symbol}! Exit: {ExitPrice}, NetPnL: +{NetPnL:F2}",
             notification.Symbol, notification.ExitPrice, notification.NetRealizedPnL);
+        return Task.CompletedTask;
+    }
+
+    public Task PublishRiskAlertAsync(RiskAlertNotificationDto alert, CancellationToken ct = default)
+    {
+        logger.LogWarning("NOTIFICATION: RISK ALERT [{Severity}] {Rule}: {Message}", alert.Severity, alert.RuleName, alert.Message);
+        return Task.CompletedTask;
+    }
+
+    public Task PublishSystemAlertAsync(SystemAlertNotificationDto alert, CancellationToken ct = default)
+    {
+        logger.LogWarning("NOTIFICATION: SYSTEM ALERT [{Level}] {Title}: {Message}", alert.Level, alert.Title, alert.Message);
+        return Task.CompletedTask;
+    }
+
+    public Task SendUserNotificationAsync(Guid userId, NotificationDto notification, CancellationToken ct = default)
+    {
+        logger.LogInformation("NOTIFICATION: USER {UserId} -> [{Type}] {Title}", userId, notification.Type, notification.Title);
         return Task.CompletedTask;
     }
 }

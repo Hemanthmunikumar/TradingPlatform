@@ -59,6 +59,9 @@ public static class DependencyInjection
         // Trade History & Execution Reporting
         services.AddScoped<ITradeHistoryService, TradeHistoryService>();
 
+        // Real-Time Notification Persistence
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
 

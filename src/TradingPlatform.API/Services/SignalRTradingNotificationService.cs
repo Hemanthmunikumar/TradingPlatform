@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.SignalR;
 using TradingPlatform.API.Hubs;
 using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Contracts.Approvals;
+using TradingPlatform.Contracts.Notifications;
 using TradingPlatform.Contracts.Orders;
 using TradingPlatform.Contracts.Trades;
 
 namespace TradingPlatform.API.Services;
 
 public class SignalRTradingNotificationService(
-    IHubContext<TradingHub> hubContext,
+    IHubContext<TradingHub, ITradingHubClient> hubContext,
     ILogger<SignalRTradingNotificationService> logger) : ITradingNotificationService
 {
     public async Task PublishBuyApprovalRequestedAsync(PendingTradeApprovalDto approval, CancellationToken ct = default)
@@ -16,7 +17,7 @@ public class SignalRTradingNotificationService(
         try
         {
             logger.LogInformation("SignalR Broadcasting BuyApprovalRequested for {Symbol} (ID: {Id})", approval.Symbol, approval.Id);
-            await hubContext.Clients.All.SendAsync("ReceiveBuyApproval", approval, ct);
+            await hubContext.Clients.All.ReceiveBuyApproval(approval);
         }
         catch (Exception ex)
         {
@@ -29,7 +30,7 @@ public class SignalRTradingNotificationService(
         try
         {
             logger.LogInformation("SignalR Broadcasting ApprovalDecision for {ApprovalId}: {Status}", approvalId, status);
-            await hubContext.Clients.All.SendAsync("ReceiveApprovalDecision", new { approvalId, status, message }, ct);
+            await hubContext.Clients.All.ReceiveApprovalDecision(new { approvalId, status, message });
         }
         catch (Exception ex)
         {
@@ -41,7 +42,7 @@ public class SignalRTradingNotificationService(
     {
         try
         {
-            await hubContext.Clients.All.SendAsync("ReceiveOrderSubmitted", order, ct);
+            await hubContext.Clients.All.ReceiveOrderSubmitted(order);
         }
         catch (Exception ex)
         {
@@ -53,7 +54,7 @@ public class SignalRTradingNotificationService(
     {
         try
         {
-            await hubContext.Clients.All.SendAsync("ReceiveOrderFilled", order, ct);
+            await hubContext.Clients.All.ReceiveOrderFilled(order);
         }
         catch (Exception ex)
         {
@@ -65,7 +66,7 @@ public class SignalRTradingNotificationService(
     {
         try
         {
-            await hubContext.Clients.All.SendAsync("ReceivePositionClosed", position, ct);
+            await hubContext.Clients.All.ReceivePositionClosed(position);
         }
         catch (Exception ex)
         {
@@ -78,7 +79,7 @@ public class SignalRTradingNotificationService(
         try
         {
             logger.LogInformation("SignalR Broadcasting SellExecutionToast for {Symbol}: NetPnL {PnL:F2}", notification.Symbol, notification.NetRealizedPnL);
-            await hubContext.Clients.All.SendAsync("ReceiveSellExecutionToast", notification, ct);
+            await hubContext.Clients.All.ReceiveSellExecutionToast(notification);
         }
         catch (Exception ex)
         {
@@ -91,7 +92,7 @@ public class SignalRTradingNotificationService(
         try
         {
             logger.LogWarning("SignalR Broadcasting StopLossHitToast for {Symbol}: NetPnL {PnL:F2}", notification.Symbol, notification.NetRealizedPnL);
-            await hubContext.Clients.All.SendAsync("ReceiveStopLossHitToast", notification, ct);
+            await hubContext.Clients.All.ReceiveStopLossHitToast(notification);
         }
         catch (Exception ex)
         {
@@ -104,11 +105,50 @@ public class SignalRTradingNotificationService(
         try
         {
             logger.LogInformation("SignalR Broadcasting TargetHitToast for {Symbol}: NetPnL +{PnL:F2}", notification.Symbol, notification.NetRealizedPnL);
-            await hubContext.Clients.All.SendAsync("ReceiveTargetHitToast", notification, ct);
+            await hubContext.Clients.All.ReceiveTargetHitToast(notification);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to broadcast ReceiveTargetHitToast for {Symbol}", notification.Symbol);
+        }
+    }
+
+    public async Task PublishRiskAlertAsync(RiskAlertNotificationDto alert, CancellationToken ct = default)
+    {
+        try
+        {
+            logger.LogWarning("SignalR Broadcasting RiskAlert [{Severity}] {Rule}: {Message}", alert.Severity, alert.RuleName, alert.Message);
+            await hubContext.Clients.All.ReceiveRiskAlert(alert);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to broadcast ReceiveRiskAlert");
+        }
+    }
+
+    public async Task PublishSystemAlertAsync(SystemAlertNotificationDto alert, CancellationToken ct = default)
+    {
+        try
+        {
+            logger.LogWarning("SignalR Broadcasting SystemAlert [{Level}] {Title}: {Message}", alert.Level, alert.Title, alert.Message);
+            await hubContext.Clients.All.ReceiveSystemAlert(alert);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to broadcast ReceiveSystemAlert");
+        }
+    }
+
+    public async Task SendUserNotificationAsync(Guid userId, NotificationDto notification, CancellationToken ct = default)
+    {
+        try
+        {
+            logger.LogInformation("SignalR Sending direct notification to user-{UserId}: [{Type}] {Title}", userId, notification.Type, notification.Title);
+            await hubContext.Clients.Group($"user-{userId}").ReceiveNotification(notification);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to send direct notification to user-{UserId}", userId);
         }
     }
 }

@@ -1,5 +1,5 @@
 import axios, { type AxiosError } from 'axios';
-import type { ApiResponse, AuthResponse, PendingTradeApprovalDto } from '../types';
+import type { ApiResponse, AuthResponse, PendingTradeApprovalDto, NotificationDto } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
@@ -123,5 +123,24 @@ export const tradesApi = {
   getExportCsvUrl: (params?: { tradingAccountId?: string; symbol?: string; fromUtc?: string; toUtc?: string }) => {
     const query = new URLSearchParams(params as any).toString();
     return `${API_BASE_URL}/trades/export-csv${query ? `?${query}` : ''}`;
+  },
+};
+
+export const notificationsApi = {
+  getAll: async (params?: { unreadOnly?: boolean; page?: number; pageSize?: number }) => {
+    const res = await apiClient.get<NotificationDto[]>('/notifications', { params });
+    return res.data;
+  },
+  getUnreadCount: async () => {
+    const res = await apiClient.get<number>('/notifications/unread-count');
+    return res.data;
+  },
+  markAsRead: async (id: string) => {
+    const res = await apiClient.put(`/notifications/${id}/read`);
+    return res.data;
+  },
+  markAllAsRead: async () => {
+    const res = await apiClient.put('/notifications/mark-all-read');
+    return res.data;
   },
 };

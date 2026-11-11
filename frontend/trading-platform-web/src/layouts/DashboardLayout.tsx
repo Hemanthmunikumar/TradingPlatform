@@ -5,7 +5,6 @@ import {
   Layers, 
   ShieldAlert, 
   Sliders, 
-  Bell, 
   LogOut, 
   Menu, 
   X, 
@@ -14,6 +13,7 @@ import {
   Clock
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { NotificationCenter } from '../components/NotificationCenter';
 
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
@@ -73,11 +73,8 @@ export const DashboardLayout: React.FC = () => {
             </div>
           )}
 
-          {/* Notification Bell */}
-          <button className="relative p-2 rounded-lg bg-slate-800/80 text-slate-400 hover:text-white transition">
-            <Bell size={18} />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full" />
-          </button>
+          {/* Notification Center */}
+          <NotificationCenter />
 
           {/* User Profile & Logout */}
           <div className="flex items-center gap-2 pl-2 border-l border-slate-800">

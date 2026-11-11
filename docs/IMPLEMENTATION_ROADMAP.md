@@ -32,7 +32,7 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 13 — SignalR Notification System  
 > **Current Task:** Full typed SignalR Hubs, group subscriptions, notification center & persistence  
-> **Next Up:** Email and WhatsApp Integrations (Milestone 14)
+> **Next Up:** Multi-Account Execution (Milestone 15)
 
 ---
 
@@ -645,7 +645,7 @@ Implement comprehensive SELL execution notifications with P&L details, and build
 
 ---
 
-## Milestone 13: SignalR Notification System [ ] Not Started
+## Milestone 13: SignalR Notification System [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 3  

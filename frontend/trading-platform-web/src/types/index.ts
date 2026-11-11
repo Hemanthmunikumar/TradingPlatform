@@ -194,3 +194,31 @@ export interface SellExecutionToastDto {
   exitTrigger: string;
   executedAtUtc: string;
 }
+
+export interface NotificationDto {
+  id: string;
+  userId: string;
+  tradingAccountId?: string;
+  type: string;
+  title: string;
+  message: string;
+  dataJson?: string;
+  isRead: boolean;
+  readAtUtc?: string;
+  createdAtUtc: string;
+}
+
+export interface RiskAlertNotificationDto {
+  tradingAccountId?: string;
+  severity: string;
+  ruleName: string;
+  message: string;
+  timestampUtc: string;
+}
+
+export interface SystemAlertNotificationDto {
+  level: string;
+  title: string;
+  message: string;
+  timestampUtc: string;
+}

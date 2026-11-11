@@ -1,4 +1,5 @@
 using TradingPlatform.Contracts.Approvals;
+using TradingPlatform.Contracts.Notifications;
 using TradingPlatform.Contracts.Orders;
 using TradingPlatform.Contracts.Trades;
 
@@ -14,4 +15,7 @@ public interface ITradingNotificationService
     Task PublishSellExecutionAsync(SellExecutionNotificationDto notification, CancellationToken ct = default);
     Task PublishStopLossHitAsync(SellExecutionNotificationDto notification, CancellationToken ct = default);
     Task PublishTargetHitAsync(SellExecutionNotificationDto notification, CancellationToken ct = default);
+    Task PublishRiskAlertAsync(RiskAlertNotificationDto alert, CancellationToken ct = default);
+    Task PublishSystemAlertAsync(SystemAlertNotificationDto alert, CancellationToken ct = default);
+    Task SendUserNotificationAsync(Guid userId, NotificationDto notification, CancellationToken ct = default);
 }
