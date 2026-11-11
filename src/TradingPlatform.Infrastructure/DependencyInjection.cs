@@ -13,6 +13,8 @@ using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Application.Interfaces.Trades;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
+using TradingPlatform.Infrastructure.Adapters.Upstox;
+using TradingPlatform.Infrastructure.Adapters.Zerodha;
 using TradingPlatform.Infrastructure.Analytics;
 using TradingPlatform.Infrastructure.Approvals;
 using TradingPlatform.Infrastructure.MarketData;
@@ -78,6 +80,8 @@ public static class DependencyInjection
 
         // Broker Adapters
         services.AddSingleton<MockBrokerAdapter>();
+        services.AddHttpClient<UpstoxBrokerAdapter>();
+        services.AddHttpClient<ZerodhaBrokerAdapter>();
         services.AddSingleton<IBrokerAdapterFactory, BrokerAdapterFactory>();
 
         // Register PostgreSQL with EF Core

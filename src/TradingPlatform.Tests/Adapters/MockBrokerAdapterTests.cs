@@ -1,9 +1,14 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging;
+using Moq;
+using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Domain.Entities;
 using TradingPlatform.Domain.Enums;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
+using TradingPlatform.Infrastructure.Adapters.Upstox;
+using TradingPlatform.Infrastructure.Adapters.Zerodha;
 
 namespace TradingPlatform.Tests.Adapters;
 
@@ -160,7 +165,10 @@ public class MockBrokerAdapterTests
     public void BrokerAdapterFactory_ShouldResolveMockAdapterForMockCode()
     {
         // Arrange
-        var factory = new BrokerAdapterFactory(_adapter);
+        var mockEncryption = new Mock<ICredentialEncryptionService>();
+        var upstox = new UpstoxBrokerAdapter(new HttpClient(), mockEncryption.Object, new Mock<ILogger<UpstoxBrokerAdapter>>().Object);
+        var zerodha = new ZerodhaBrokerAdapter(new HttpClient(), mockEncryption.Object, new Mock<ILogger<ZerodhaBrokerAdapter>>().Object);
+        var factory = new BrokerAdapterFactory(_adapter, upstox, zerodha);
 
         // Act
         var resolved = factory.GetAdapter(BrokerCode.Mock);
