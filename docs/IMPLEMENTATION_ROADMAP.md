@@ -2,7 +2,7 @@
 
 > **Document Version:** 1.0  
 > **Last Updated:** 2026-11-11  
-> **Status:** Active � Milestone 2 Ready to Begin  
+> **Status:** Active � Milestone 2 Ready to Begin  
 
 This document defines the milestone-by-milestone implementation plan for the Indian Stock Trading Platform. Each milestone includes deliverables, acceptance criteria, dependencies, and estimated complexity.
 
@@ -30,9 +30,9 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 2 � Domain Model and Database  
-> **Current Task:** Ready to implement domain entities, EF Core configurations, and Docker PostgreSQL setup  
-> **Next Up:** Domain aggregates, migrations, seed data  
+> **Active Milestone:** Milestone 7 — Market Data and Instrument Services  
+> **Current Task:** Instrument master sync, historical candles, quote cache, mock stream  
+> **Next Up:** Strategy Engine and Technical Indicators (Milestone 8)
 
 ---
 
@@ -289,7 +289,7 @@ Build the API endpoints for managing broker connections, including OAuth flow or
 
 ---
 
-## Milestone 6: React Dashboard and Account Management [ ] Not Started
+## Milestone 6: React Dashboard and Account Management [x] Complete
 
 **Complexity:** XL  
 **Dependencies:** Milestone 3, Milestone 5  
@@ -300,34 +300,34 @@ Initialize the React frontend project and build the core dashboard with authenti
 
 ### Deliverables
 
-- [ ] Initialize React + Vite + TypeScript project
-- [ ] Configure project structure:
-  - [ ] `src/components/` — Reusable UI components
-  - [ ] `src/pages/` — Page-level components
-  - [ ] `src/hooks/` — Custom React hooks
-  - [ ] `src/services/` — API client layer
-  - [ ] `src/contexts/` — Auth context, notification context
-  - [ ] `src/types/` — TypeScript interfaces and types
-- [ ] Install and configure dependencies:
-  - [ ] React Router v7 for routing
-  - [ ] Axios or fetch wrapper for API calls
-  - [ ] Tailwind CSS or component library for styling
-  - [ ] `@microsoft/signalr` for real-time
-  - [ ] `vite-plugin-pwa` for PWA support
-- [ ] Implement pages:
-  - [ ] Login page (responsive)
-  - [ ] Registration page
-  - [ ] Dashboard layout (sidebar, header, content area)
-  - [ ] Broker connection management page
-  - [ ] Account configuration page
-  - [ ] Settings page
-- [ ] Implement core components:
-  - [ ] Navigation sidebar (collapsible on mobile)
-  - [ ] Header with user info and trading mode indicator
-  - [ ] Toast notification container
-  - [ ] Loading states and error boundaries
-  - [ ] Responsive data tables
-- [ ] Auth context (JWT storage, auto-refresh, redirect on 401)
+- [x] Initialize React + Vite + TypeScript project
+- [x] Configure project structure:
+  - [x] `src/components/` — Reusable UI components
+  - [x] `src/pages/` — Page-level components
+  - [x] `src/hooks/` — Custom React hooks
+  - [x] `src/services/` — API client layer
+  - [x] `src/contexts/` — Auth context, notification context
+  - [x] `src/types/` — TypeScript interfaces and types
+- [x] Install and configure dependencies:
+  - [x] React Router v7 for routing
+  - [x] Axios or fetch wrapper for API calls
+  - [x] Tailwind CSS or component library for styling
+  - [x] `@microsoft/signalr` for real-time
+  - [x] `vite-plugin-pwa` for PWA support
+- [x] Implement pages:
+  - [x] Login page (responsive)
+  - [x] Registration page
+  - [x] Dashboard layout (sidebar, header, content area)
+  - [x] Broker connection management page
+  - [x] Account configuration page
+  - [x] Settings page
+- [x] Implement core components:
+  - [x] Navigation sidebar (collapsible on mobile)
+  - [x] Header with user info and trading mode indicator
+  - [x] Toast notification container
+  - [x] Loading states and error boundaries
+  - [x] Responsive data tables
+- [x] Auth context (JWT storage, auto-refresh, redirect on 401)
 - [ ] API client with interceptors (auth header, error handling)
 - [ ] Mobile-first responsive design (breakpoints: 375px, 768px, 1024px, 1440px)
 - [ ] PWA manifest and service worker setup

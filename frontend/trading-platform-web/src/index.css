@@ -1,0 +1,129 @@
+:root {
+  --bg-primary: #090d16;
+  --bg-secondary: #0f172a;
+  --bg-card: #1e293b;
+  --border-color: #334155;
+  --text-primary: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent-sky: #0ea5e9;
+  --profit-green: #10b981;
+  --loss-red: #f43f5e;
+  --warning-amber: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+code, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Glass & Card styles */
+.trading-card {
+  background-color: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(51, 65, 85, 0.6);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.trading-card:hover {
+  border-color: rgba(14, 165, 233, 0.4);
+}
+
+.trading-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.trading-btn-primary {
+  background: linear-gradient(135deg, #0284c7, #0ea5e9);
+  color: white;
+}
+.trading-btn-primary:hover {
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+.trading-btn-danger {
+  background: linear-gradient(135deg, #e11d48, #f43f5e);
+  color: white;
+}
+.trading-btn-danger:hover {
+  background: linear-gradient(135deg, #be123c, #e11d48);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+
+.trading-btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+}
+.trading-btn-secondary:hover {
+  background: #334155;
+  color: white;
+}
+
+.trading-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #f8fafc;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.trading-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+/* Countdown bar animation for BUY toast */
+@keyframes countdownTimer {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.countdown-bar {
+  animation: countdownTimer 2s linear forwards;
+}
