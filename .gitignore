@@ -48,3 +48,7 @@ $RECYCLE.BIN/
 TestResults/
 coverage/
 *.coverage
+
+# Application Logs
+logs/
+*.log

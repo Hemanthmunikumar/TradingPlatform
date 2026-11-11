@@ -123,7 +123,7 @@ Create the .NET solution structure, configure all projects with correct referenc
 
 ---
 
-## Milestone 2: Domain Model and Database [ ] Not Started
+## Milestone 2: Domain Model and Database [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 1  
