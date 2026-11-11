@@ -255,7 +255,7 @@ Implement the broker adapter abstraction layer and a fully functional MockBroker
 
 ---
 
-## Milestone 5: Broker Connection Configuration [ ] Not Started
+## Milestone 5: Broker Connection Configuration [x] Complete
 
 **Complexity:** M  
 **Dependencies:** Milestone 3, Milestone 4  
