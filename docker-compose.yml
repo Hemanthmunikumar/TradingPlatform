@@ -1,0 +1,77 @@
+services:
+  # PostgreSQL 17 Relational Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: algo-trading-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trading_platform}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_secure_pass_2026}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-trading_platform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # .NET 10 LTS Core Web API
+  api:
+    build:
+      context: .
+      dockerfile: src/TradingPlatform.API/Dockerfile
+    container_name: algo-trading-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-trading_platform};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres_secure_pass_2026};Include Error Detail=false"
+      Jwt__Secret: ${JWT_SECRET:-super-secret-production-jwt-key-minimum-32-chars-long-2026}
+      Jwt__Issuer: "IndianAlgoTradingPlatform"
+      Jwt__Audience: "IndianAlgoTradingClient"
+      Encryption__MasterKey: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # .NET 10 LTS Background Execution & Approval Worker
+  worker:
+    build:
+      context: .
+      dockerfile: src/TradingPlatform.Worker/Dockerfile
+    container_name: algo-trading-worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      DOTNET_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-trading_platform};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres_secure_pass_2026};Include Error Detail=false"
+      Encryption__MasterKey: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+
+  # React 19 / Vite Web Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend/trading-platform-web
+      dockerfile: Dockerfile
+    container_name: algo-trading-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  pgdata:
+    driver: local
