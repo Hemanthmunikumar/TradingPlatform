@@ -30,9 +30,9 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 8 — Strategy Engine and Technical Indicators  
-> **Current Task:** Deterministic technical indicators (VWAP, EMA, RSI, MACD, ATR), strategy engine, and signal models  
-> **Next Up:** Risk Engine (Milestone 9)
+> **Active Milestone:** Milestone 9 — Risk Engine  
+> **Current Task:** Independent 19-point pre-order validation gate, dual-level kill switch, daily loss tracking  
+> **Next Up:** Paper Trading and Order State Machine (Milestone 10)
 
 ---
 
@@ -199,7 +199,7 @@ Implement JWT-based authentication with refresh token rotation, password hashing
   - [ ] `POST /api/auth/refresh`
   - [ ] `POST /api/auth/logout`
   - [ ] `GET /api/auth/me`
-- [ ] Unit tests:
+- [x] Unit tests:
   - [ ] Password hashing roundtrip
   - [ ] JWT token generation and validation
   - [ ] Refresh token rotation (old token invalidated)
@@ -240,7 +240,7 @@ Implement the broker adapter abstraction layer and a fully functional MockBroker
   - [ ] Mock instrument list (NSE top 50)
 - [ ] Implement `BrokerAdapterFactory`
 - [ ] Implement `CredentialEncryptionService` (AES-256-GCM)
-- [ ] Unit tests:
+- [x] Unit tests:
   - [ ] MockBrokerAdapter order lifecycle
   - [ ] Factory resolves correct adapter
   - [ ] Credential encryption roundtrip
@@ -385,7 +385,7 @@ Build the market data layer for instrument management, historical data, and quot
 
 ---
 
-## Milestone 8: Strategy Engine and Technical Indicators [ ] Not Started
+## Milestone 8: Strategy Engine and Technical Indicators [x] Complete
 
 **Complexity:** XL  
 **Dependencies:** Milestone 7  
@@ -396,36 +396,36 @@ Build the technical indicator calculation engine, strategy definition system, an
 
 ### Deliverables
 
-- [ ] Implement technical indicators (pure C# calculations):
-  - [ ] EMA (Exponential Moving Average) — multiple periods
-  - [ ] RSI (Relative Strength Index) — 14-period default
-  - [ ] MACD (Moving Average Convergence Divergence)
-  - [ ] VWAP (Volume Weighted Average Price)
-  - [ ] ATR (Average True Range)
-  - [ ] Bollinger Bands
-  - [ ] Support/Resistance levels
-- [ ] Implement strategy framework:
-  - [ ] `IStrategy` interface with `Evaluate()` method
-  - [ ] Strategy configuration (parameters as JSON)
-  - [ ] Strategy versioning (immutable versions)
-  - [ ] Strategy activation/deactivation per account
-- [ ] Implement signal generation:
-  - [ ] `SignalGenerationService` — runs strategies against market data
-  - [ ] Signal types: BUY, SELL, HOLD
-  - [ ] Signal strength and confidence scoring
-  - [ ] Signal persistence (all signals logged)
-- [ ] Stock universe management:
-  - [ ] Define which instruments a strategy monitors
-  - [ ] Scanning schedule configuration
-- [ ] API endpoints:
-  - [ ] CRUD for strategies
-  - [ ] Strategy configuration updates
-  - [ ] `GET /api/strategies/{id}/signals` — signal history
-  - [ ] `GET /api/indicators/{symbol}` — calculated indicator values
+- [x] Implement technical indicators (pure C# calculations):
+  - [x] EMA (Exponential Moving Average) — multiple periods
+  - [x] RSI (Relative Strength Index) — 14-period default
+  - [x] MACD (Moving Average Convergence Divergence)
+  - [x] VWAP (Volume Weighted Average Price)
+  - [x] ATR (Average True Range)
+  - [x] Bollinger Bands
+  - [x] Support/Resistance levels
+- [x] Implement strategy framework:
+  - [x] `IStrategy` interface with `Evaluate()` method
+  - [x] Strategy configuration (parameters as JSON)
+  - [x] Strategy versioning (immutable versions)
+  - [x] Strategy activation/deactivation per account
+- [x] Implement signal generation:
+  - [x] `SignalGenerationService` — runs strategies against market data
+  - [x] Signal types: BUY, SELL, HOLD
+  - [x] Signal strength and confidence scoring
+  - [x] Signal persistence (all signals logged)
+- [x] Stock universe management:
+  - [x] Define which instruments a strategy monitors
+  - [x] Scanning schedule configuration
+- [x] API endpoints:
+  - [x] CRUD for strategies
+  - [x] Strategy configuration updates
+  - [x] `GET /api/strategies/{id}/signals` — signal history
+  - [x] `GET /api/indicators/{symbol}` — calculated indicator values
 - [ ] Unit tests:
-  - [ ] Each indicator validated against known datasets
-  - [ ] Strategy evaluation with mock market data
-  - [ ] Signal generation pipeline
+  - [x] Each indicator validated against known datasets
+  - [x] Strategy evaluation with mock market data
+  - [x] Signal generation pipeline
 
 ### Acceptance Criteria
 
@@ -469,7 +469,7 @@ Build the comprehensive risk management engine that validates every order before
   - [ ] Chain of risk validators executed in sequence
   - [ ] All validation failures collected and returned
   - [ ] Validation results logged for audit
-- [ ] API endpoints:
+- [x] API endpoints:
   - [ ] `GET /api/risk/config` — current risk configuration
   - [ ] `PUT /api/risk/config` — update risk parameters
   - [ ] `POST /api/risk/kill-switch` — toggle kill switch

@@ -46,7 +46,8 @@ public enum ApprovalStatus
 public enum SignalType
 {
     Buy = 1,
-    Sell = 2
+    Sell = 2,
+    Hold = 3
 }
 
 public enum SignalStatus

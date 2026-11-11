@@ -4,11 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
 using TradingPlatform.Infrastructure.MarketData;
 using TradingPlatform.Infrastructure.Persistence;
 using TradingPlatform.Infrastructure.Security;
+using TradingPlatform.Infrastructure.Strategies;
 
 namespace TradingPlatform.Infrastructure;
 
@@ -26,6 +28,10 @@ public static class DependencyInjection
         services.AddSingleton<IQuoteCache, QuoteCache>();
         services.AddScoped<IInstrumentService, InstrumentService>();
         services.AddScoped<IMarketDataService, MarketDataService>();
+
+        // Strategy Engine & Technical Indicators
+        services.AddScoped<IIndicatorService, IndicatorService>();
+        services.AddScoped<IStrategyEngine, StrategyEngine>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
