@@ -31,8 +31,8 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 13 — SignalR Notification System  
-> **Current Task:** Cross-user isolation, credential encryption verification, worker recovery  
-> **Next Up:** Live Broker Deployment & Hardening (Milestone 16)
+> **Current Task:** Docker compose, multi-stage Dockerfiles, Nginx TLS & health checks  
+> **Next Up:** Live Broker Deployment & Go-Live (Milestone 18)
 
 ---
 
@@ -768,7 +768,7 @@ Build the complete SignalR real-time notification infrastructure.
 
 ---
 
-## Milestone 16: Security and Recovery Testing [ ] Not Started
+## Milestone 16: Security and Recovery Testing [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 11  
