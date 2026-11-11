@@ -2,7 +2,7 @@
 
 > **Document Version:** 1.0  
 > **Last Updated:** 2026-11-11  
-> **Status:** Active â€” Milestone 0 In Progress  
+> **Status:** Active — Milestone 2 Ready to Begin  
 
 This document defines the milestone-by-milestone implementation plan for the Indian Stock Trading Platform. Each milestone includes deliverables, acceptance criteria, dependencies, and estimated complexity.
 
@@ -30,13 +30,13 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 0 â€” Environment Inspection and Architecture  
-> **Current Task:** Creating architecture documentation suite (10 documents)  
-> **Next Up:** User review and approval of architecture documents  
+> **Active Milestone:** Milestone 2 — Domain Model and Database  
+> **Current Task:** Ready to implement domain entities, EF Core configurations, and Docker PostgreSQL setup  
+> **Next Up:** Domain aggregates, migrations, seed data  
 
 ---
 
-## Milestone 0: Environment Inspection and Architecture [~] In Progress
+## Milestone 0: Environment Inspection and Architecture [x] Complete
 
 **Complexity:** M  
 **Dependencies:** None  
@@ -72,7 +72,7 @@ Establish the complete architectural foundation before writing any implementatio
 
 ---
 
-## Milestone 1: Solution Structure and Foundation [ ] Not Started
+## Milestone 1: Solution Structure and Foundation [x] Complete
 
 **Complexity:** M  
 **Dependencies:** Milestone 0 (approved)  

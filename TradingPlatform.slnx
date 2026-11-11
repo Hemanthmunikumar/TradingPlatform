@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TradingPlatform.API/TradingPlatform.API.csproj" />
+    <Project Path="src/TradingPlatform.Application/TradingPlatform.Application.csproj" />
+    <Project Path="src/TradingPlatform.Contracts/TradingPlatform.Contracts.csproj" />
+    <Project Path="src/TradingPlatform.Domain/TradingPlatform.Domain.csproj" />
+    <Project Path="src/TradingPlatform.Infrastructure/TradingPlatform.Infrastructure.csproj" />
+    <Project Path="src/TradingPlatform.IntegrationTests/TradingPlatform.IntegrationTests.csproj" />
+    <Project Path="src/TradingPlatform.Tests/TradingPlatform.Tests.csproj" />
+    <Project Path="src/TradingPlatform.Worker/TradingPlatform.Worker.csproj" />
+  </Folder>
+</Solution>
