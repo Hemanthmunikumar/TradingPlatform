@@ -215,7 +215,7 @@ Implement JWT-based authentication with refresh token rotation, password hashing
 
 ---
 
-## Milestone 4: Broker Abstraction and Mock Adapters [ ] Not Started
+## Milestone 4: Broker Abstraction and Mock Adapters [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 2  
