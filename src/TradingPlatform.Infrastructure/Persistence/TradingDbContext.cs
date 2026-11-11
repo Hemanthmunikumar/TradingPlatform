@@ -57,18 +57,24 @@ public class TradingDbContext(
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var clrType = entityType.ClrType;
+            var isTenant = typeof(IMustHaveTenant).IsAssignableFrom(clrType);
+            var isSoftDelete = typeof(ISoftDelete).IsAssignableFrom(clrType);
 
-            // Multi-tenant isolation: filter by ambient user if entity implements IMustHaveTenant and user is not admin
-            if (typeof(IMustHaveTenant).IsAssignableFrom(clrType))
+            if (isTenant && isSoftDelete)
+            {
+                var method = typeof(TradingDbContext)
+                    .GetMethod(nameof(ConfigureTenantAndSoftDeleteFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+                    .MakeGenericMethod(clrType);
+                method.Invoke(this, [modelBuilder]);
+            }
+            else if (isTenant)
             {
                 var method = typeof(TradingDbContext)
                     .GetMethod(nameof(ConfigureTenantFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
                     .MakeGenericMethod(clrType);
                 method.Invoke(this, [modelBuilder]);
             }
-
-            // Soft-delete filter
-            if (typeof(ISoftDelete).IsAssignableFrom(clrType))
+            else if (isSoftDelete)
             {
                 var method = typeof(TradingDbContext)
                     .GetMethod(nameof(ConfigureSoftDeleteFilter), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
@@ -84,12 +90,21 @@ public class TradingDbContext(
         builder.Entity<T>().HasQueryFilter(e =>
             _currentUserService.IsAdmin ||
             !_currentUserService.UserId.HasValue ||
-            e.UserId == _currentUserService.UserId.Value);
+            (Guid?)e.UserId == _currentUserService.UserId);
     }
 
     private void ConfigureSoftDeleteFilter<T>(ModelBuilder builder) where T : class, ISoftDelete
     {
         builder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
+    }
+
+    private void ConfigureTenantAndSoftDeleteFilter<T>(ModelBuilder builder) where T : class, IMustHaveTenant, ISoftDelete
+    {
+        builder.Entity<T>().HasQueryFilter(e =>
+            !e.IsDeleted &&
+            (_currentUserService.IsAdmin ||
+             !_currentUserService.UserId.HasValue ||
+             (Guid?)e.UserId == _currentUserService.UserId));
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

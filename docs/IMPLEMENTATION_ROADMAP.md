@@ -30,9 +30,9 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 9 — Risk Engine  
-> **Current Task:** Independent 19-point pre-order validation gate, dual-level kill switch, daily loss tracking  
-> **Next Up:** Paper Trading and Order State Machine (Milestone 10)
+> **Active Milestone:** Milestone 10 — Paper Trading and Order State Machine  
+> **Current Task:** Order lifecycle state machine, paper execution engine, position tracking, FIFO lot accounting  
+> **Next Up:** Two-Second BUY Rejection Workflow (Milestone 11)
 
 ---
 
@@ -436,7 +436,7 @@ Build the technical indicator calculation engine, strategy definition system, an
 
 ---
 
-## Milestone 9: Risk Engine [ ] Not Started
+## Milestone 9: Risk Engine [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 8  
@@ -447,43 +447,43 @@ Build the comprehensive risk management engine that validates every order before
 
 ### Deliverables
 
-- [ ] Implement `IRiskValidationService`:
-  - [ ] Maximum position size (% of portfolio)
-  - [ ] Maximum open positions count
-  - [ ] Daily loss limit (% of portfolio)
-  - [ ] Per-trade risk limit
-  - [ ] Duplicate order detection (same symbol, same side, within time window)
-  - [ ] Market hours validation
-  - [ ] Instrument trading status check
-  - [ ] Margin requirement validation
-  - [ ] Price reasonableness check (deviation from LTP)
-- [ ] Implement kill switch:
-  - [ ] Manual kill switch toggle (immediately stops all new orders)
-  - [ ] Automatic kill switch on daily loss limit breach
-  - [ ] Kill switch status persisted and respected by Worker
-- [ ] Risk configuration:
-  - [ ] Per-account risk parameters
-  - [ ] Default risk parameters for new accounts
-  - [ ] API for viewing and updating risk configuration
-- [ ] Pre-order validation pipeline:
-  - [ ] Chain of risk validators executed in sequence
-  - [ ] All validation failures collected and returned
-  - [ ] Validation results logged for audit
+- [x] Implement `IRiskValidationService`:
+  - [x] Maximum position size (% of portfolio)
+  - [x] Maximum open positions count
+  - [x] Daily loss limit (% of portfolio)
+  - [x] Per-trade risk limit
+  - [x] Duplicate order detection (same symbol, same side, within time window)
+  - [x] Market hours validation
+  - [x] Instrument trading status check
+  - [x] Margin requirement validation
+  - [x] Price reasonableness check (deviation from LTP)
+- [x] Implement kill switch:
+  - [x] Manual kill switch toggle (immediately stops all new orders)
+  - [x] Automatic kill switch on daily loss limit breach
+  - [x] Kill switch status persisted and respected by Worker
+- [x] Risk configuration:
+  - [x] Per-account risk parameters
+  - [x] Default risk parameters for new accounts
+  - [x] API for viewing and updating risk configuration
+- [x] Pre-order validation pipeline:
+  - [x] Chain of risk validators executed in sequence
+  - [x] All validation failures collected and returned
+  - [x] Validation results logged for audit
 - [x] API endpoints:
   - [ ] `GET /api/risk/config` — current risk configuration
   - [ ] `PUT /api/risk/config` — update risk parameters
   - [ ] `POST /api/risk/kill-switch` — toggle kill switch
   - [ ] `GET /api/risk/daily-summary` — daily risk metrics
-- [ ] Unit tests for every risk rule (pass and fail scenarios)
+- [x] Unit tests for every risk rule (pass and fail scenarios)
 
 ### Acceptance Criteria
 
-- Order exceeding position size limit is rejected with clear reason
-- Daily loss limit triggers automatic kill switch
-- Kill switch immediately prevents all new orders
-- Duplicate order detected and blocked
-- Risk validation results include all failures (not just first)
-- 100% unit test coverage on risk rules
+- [x] Order exceeding position size limit is rejected with clear reason
+- [x] Daily loss limit triggers automatic kill switch
+- [x] Kill switch immediately prevents all new orders
+- [x] Duplicate order detected and blocked
+- [x] Risk validation results include all failures (not just first)
+- [x] 100% unit test coverage on risk rules
 
 ---
 

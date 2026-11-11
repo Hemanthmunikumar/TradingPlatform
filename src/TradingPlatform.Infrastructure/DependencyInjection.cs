@@ -4,11 +4,13 @@ using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Risk;
 using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
 using TradingPlatform.Infrastructure.MarketData;
 using TradingPlatform.Infrastructure.Persistence;
+using TradingPlatform.Infrastructure.Risk;
 using TradingPlatform.Infrastructure.Security;
 using TradingPlatform.Infrastructure.Strategies;
 
@@ -32,6 +34,9 @@ public static class DependencyInjection
         // Strategy Engine & Technical Indicators
         services.AddScoped<IIndicatorService, IndicatorService>();
         services.AddScoped<IStrategyEngine, StrategyEngine>();
+
+        // Pre-Order Risk Validation & Safety Engine
+        services.AddScoped<IRiskValidationService, RiskValidationService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
