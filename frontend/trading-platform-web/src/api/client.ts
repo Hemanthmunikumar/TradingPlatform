@@ -91,3 +91,37 @@ export const approvalsApi = {
     return res.data;
   },
 };
+
+export const ordersApi = {
+  getOrders: async (params?: { tradingAccountId?: string; symbol?: string; status?: string; page?: number; pageSize?: number }) => {
+    const res = await apiClient.get<any[]>('/orders', { params });
+    return res.data;
+  },
+  getPositions: async (tradingAccountId?: string, openOnly = true) => {
+    const res = await apiClient.get<any[]>('/positions', { params: { tradingAccountId, openOnly } });
+    return res.data;
+  },
+  getPortfolioSummary: async (tradingAccountId?: string) => {
+    const res = await apiClient.get<any>('/portfolio/summary', { params: { tradingAccountId } });
+    return res.data;
+  },
+  closePosition: async (positionId: string, reason?: string) => {
+    const res = await apiClient.post(`/positions/${positionId}/close`, { reason });
+    return res.data;
+  },
+  cancelOrder: async (orderId: string, reason?: string) => {
+    const res = await apiClient.delete(`/orders/${orderId}`, { params: { reason } });
+    return res.data;
+  },
+};
+
+export const tradesApi = {
+  getHistory: async (params?: { tradingAccountId?: string; symbol?: string; fromUtc?: string; toUtc?: string; page?: number; pageSize?: number }) => {
+    const res = await apiClient.get<any[]>('/trades', { params });
+    return res.data;
+  },
+  getExportCsvUrl: (params?: { tradingAccountId?: string; symbol?: string; fromUtc?: string; toUtc?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return `${API_BASE_URL}/trades/export-csv${query ? `?${query}` : ''}`;
+  },
+};

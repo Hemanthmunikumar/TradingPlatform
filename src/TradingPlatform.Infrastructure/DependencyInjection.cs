@@ -9,6 +9,7 @@ using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Application.Interfaces.Orders;
 using TradingPlatform.Application.Interfaces.Risk;
 using TradingPlatform.Application.Interfaces.Strategies;
+using TradingPlatform.Application.Interfaces.Trades;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
 using TradingPlatform.Infrastructure.Approvals;
@@ -19,6 +20,7 @@ using TradingPlatform.Infrastructure.Persistence;
 using TradingPlatform.Infrastructure.Risk;
 using TradingPlatform.Infrastructure.Security;
 using TradingPlatform.Infrastructure.Strategies;
+using TradingPlatform.Infrastructure.Trades;
 
 namespace TradingPlatform.Infrastructure;
 
@@ -53,6 +55,9 @@ public static class DependencyInjection
         // Trade Approvals & 2-Second BUY Rejection Workflow
         services.AddSingleton<ITradingNotificationService, LoggingTradingNotificationService>();
         services.AddScoped<ITradeApprovalService, TradeApprovalService>();
+
+        // Trade History & Execution Reporting
+        services.AddScoped<ITradeHistoryService, TradeHistoryService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();

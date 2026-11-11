@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Application.Interfaces.Orders;
 using TradingPlatform.Contracts.Orders;
+using TradingPlatform.Contracts.Trades;
 using TradingPlatform.Domain.Entities;
 using TradingPlatform.Domain.Enums;
 using TradingPlatform.Infrastructure.Persistence;
@@ -13,6 +15,7 @@ public class PositionService(
     TradingDbContext dbContext,
     IIndianBrokerageCalculator brokerageCalculator,
     IMarketDataService marketDataService,
+    ITradingNotificationService notificationService,
     ILogger<PositionService> logger) : IPositionService
 {
     public async Task<Position?> UpdatePositionOnExecutionAsync(TradeExecution execution, CancellationToken ct = default)
@@ -103,21 +106,84 @@ public class PositionService(
             if (openPosition != null)
             {
                 var qtyToClose = Math.Min(openPosition.Quantity, execution.Quantity);
-                var grossPnL = (execution.Price - openPosition.AverageBuyPrice) * qtyToClose;
+                var entryPrice = openPosition.AverageBuyPrice;
+                var exitPrice = execution.Price;
+                var grossPnL = (exitPrice - entryPrice) * qtyToClose;
                 var netPnL = grossPnL - sellCharges.TotalCharges;
+                var returnPct = entryPrice > 0 ? (grossPnL / (entryPrice * qtyToClose)) * 100m : 0m;
 
                 openPosition.RealizedGrossPnL += grossPnL;
                 openPosition.RealizedNetPnL += netPnL;
                 openPosition.TotalCharges += sellCharges.TotalCharges;
                 openPosition.Quantity -= qtyToClose;
-                openPosition.CurrentPrice = execution.Price;
+                openPosition.CurrentPrice = exitPrice;
+
+                var duration = DateTime.UtcNow - openPosition.OpenedAtUtc;
+                var durationStr = duration.TotalHours >= 1
+                    ? $"{(int)duration.TotalHours}h {duration.Minutes}m"
+                    : $"{duration.Minutes}m {duration.Seconds}s";
+
+                // Determine exit trigger
+                string exitTrigger = "StrategySignal";
+                if (openPosition.StopLoss.HasValue && exitPrice <= openPosition.StopLoss.Value)
+                {
+                    exitTrigger = "StopLoss";
+                }
+                else if (openPosition.Target.HasValue && exitPrice >= openPosition.Target.Value)
+                {
+                    exitTrigger = "Target";
+                }
+                else if (order?.StatusMessage?.Contains("Square", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    exitTrigger = "SquareOff";
+                }
+                else if (order?.StatusMessage?.Contains("Manual", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    exitTrigger = "Manual";
+                }
 
                 if (openPosition.Quantity <= 0)
                 {
                     openPosition.Quantity = 0;
                     openPosition.IsOpen = false;
                     openPosition.ClosedAtUtc = DateTime.UtcNow;
-                    openPosition.ExitReason = order?.StatusMessage ?? "Sold out / Square-off";
+                    openPosition.ExitReason = order?.StatusMessage ?? $"{exitTrigger} Execution";
+                }
+
+                var instrument = await dbContext.Instruments.FirstOrDefaultAsync(i => i.Id == execution.InstrumentId, ct);
+                var sellToast = new SellExecutionNotificationDto(
+                    TradeExecutionId: execution.Id,
+                    OrderId: execution.TradingOrderId,
+                    PositionId: openPosition.Id,
+                    TradingAccountId: execution.TradingAccountId,
+                    Symbol: instrument?.TradingSymbol ?? "UNKNOWN",
+                    CompanyName: instrument?.CompanyName ?? "Unknown Company",
+                    Quantity: qtyToClose,
+                    EntryPrice: entryPrice,
+                    ExitPrice: exitPrice,
+                    TotalInvestment: entryPrice * qtyToClose,
+                    TotalExitValue: exitPrice * qtyToClose,
+                    GrossPnL: Math.Round(grossPnL, 2),
+                    ReturnPercent: Math.Round(returnPct, 2),
+                    Charges: sellCharges,
+                    NetRealizedPnL: Math.Round(netPnL, 2),
+                    HoldDuration: durationStr,
+                    ExitTrigger: exitTrigger,
+                    EntryTimeUtc: openPosition.OpenedAtUtc,
+                    ExecutedAtUtc: DateTime.UtcNow
+                );
+
+                if (exitTrigger == "StopLoss")
+                {
+                    await notificationService.PublishStopLossHitAsync(sellToast, ct);
+                }
+                else if (exitTrigger == "Target")
+                {
+                    await notificationService.PublishTargetHitAsync(sellToast, ct);
+                }
+                else
+                {
+                    await notificationService.PublishSellExecutionAsync(sellToast, ct);
                 }
 
                 await dbContext.SaveChangesAsync(ct);

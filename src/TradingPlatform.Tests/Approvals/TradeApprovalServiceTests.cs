@@ -73,6 +73,7 @@ public class TradeApprovalServiceTests
             _dbContext,
             brokerageCalculator,
             mockMarketData.Object,
+            _mockNotificationService.Object,
             new Mock<ILogger<PositionService>>().Object
         );
 

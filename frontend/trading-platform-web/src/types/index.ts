@@ -103,3 +103,94 @@ export interface PendingTradeApprovalDto {
   remainingSeconds: number;
   isExpired: boolean;
 }
+
+export interface IndianBrokerageChargesDto {
+  brokerage: number;
+  stt: number;
+  exchangeCharges: number;
+  gst: number;
+  sebiFees: number;
+  stampDuty: number;
+  dpCharges: number;
+  totalCharges: number;
+}
+
+export interface PositionDto {
+  id: string;
+  tradingAccountId: string;
+  instrumentId: string;
+  symbol: string;
+  companyName: string;
+  side: string;
+  productType: string;
+  quantity: number;
+  averageBuyPrice: number;
+  currentPrice: number;
+  stopLoss?: number;
+  target?: number;
+  unrealizedPnL: number;
+  realizedGrossPnL: number;
+  realizedNetPnL: number;
+  totalCharges: number;
+  isOpen: boolean;
+  openedAtUtc: string;
+  closedAtUtc?: string;
+  exitReason?: string;
+}
+
+export interface OrderDto {
+  id: string;
+  tradingAccountId: string;
+  instrumentId: string;
+  symbol: string;
+  companyName: string;
+  side: string;
+  orderType: string;
+  productType: string;
+  quantity: number;
+  filledQuantity: number;
+  price: number;
+  triggerPrice?: number;
+  averagePrice: number;
+  status: OrderStatus;
+  statusMessage?: string;
+  brokerOrderId?: string;
+  createdAtUtc: string;
+  submittedAtUtc?: string;
+}
+
+export interface TradeHistoryDto {
+  executionId: string;
+  orderId: string;
+  tradingAccountId: string;
+  instrumentId: string;
+  symbol: string;
+  companyName: string;
+  side: string;
+  productType: string;
+  quantity: number;
+  price: number;
+  totalValue: number;
+  entryPrice?: number;
+  realizedPnL?: number;
+  exchange: string;
+  executedAtUtc: string;
+}
+
+export interface SellExecutionToastDto {
+  tradeExecutionId: string;
+  orderId: string;
+  positionId?: string;
+  symbol: string;
+  companyName: string;
+  quantity: number;
+  entryPrice: number;
+  exitPrice: number;
+  grossPnL: number;
+  returnPercent: number;
+  charges: IndianBrokerageChargesDto;
+  netRealizedPnL: number;
+  holdDuration: string;
+  exitTrigger: string;
+  executedAtUtc: string;
+}

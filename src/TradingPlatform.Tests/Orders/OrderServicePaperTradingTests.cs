@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Contracts.MarketData;
 using TradingPlatform.Contracts.Orders;
 using TradingPlatform.Domain.Entities;
@@ -63,7 +64,8 @@ public class OrderServicePaperTradingTests
             ));
 
         var posLogger = new Mock<ILogger<PositionService>>();
-        _positionService = new PositionService(_dbContext, _brokerageCalculator, _mockMarketData.Object, posLogger.Object);
+        var mockNotifications = new Mock<ITradingNotificationService>();
+        _positionService = new PositionService(_dbContext, _brokerageCalculator, _mockMarketData.Object, mockNotifications.Object, posLogger.Object);
 
         var mockBroker = new MockBrokerAdapter();
         var brokerFactoryMock = new Mock<IBrokerAdapterFactory>();

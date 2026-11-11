@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Contracts.Approvals;
 using TradingPlatform.Contracts.Orders;
+using TradingPlatform.Contracts.Trades;
 
 namespace TradingPlatform.Infrastructure.Notifications;
 
@@ -36,6 +37,27 @@ public class LoggingTradingNotificationService(ILogger<LoggingTradingNotificatio
     {
         logger.LogInformation("NOTIFICATION: Position Closed {Symbol} RealizedNetPnL: {PnL:F2}, TotalCharges: {Charges:F2}",
             position.Symbol, position.RealizedNetPnL, position.TotalCharges);
+        return Task.CompletedTask;
+    }
+
+    public Task PublishSellExecutionAsync(SellExecutionNotificationDto notification, CancellationToken ct = default)
+    {
+        logger.LogInformation("NOTIFICATION: SELL Executed for {Symbol} (Qty: {Qty}, Exit: {ExitPrice}, NetPnL: {NetPnL:F2}, Duration: {Duration})",
+            notification.Symbol, notification.Quantity, notification.ExitPrice, notification.NetRealizedPnL, notification.HoldDuration);
+        return Task.CompletedTask;
+    }
+
+    public Task PublishStopLossHitAsync(SellExecutionNotificationDto notification, CancellationToken ct = default)
+    {
+        logger.LogWarning("NOTIFICATION: STOP LOSS HIT for {Symbol}! Exit: {ExitPrice}, NetPnL: {NetPnL:F2}",
+            notification.Symbol, notification.ExitPrice, notification.NetRealizedPnL);
+        return Task.CompletedTask;
+    }
+
+    public Task PublishTargetHitAsync(SellExecutionNotificationDto notification, CancellationToken ct = default)
+    {
+        logger.LogInformation("NOTIFICATION: TARGET REACHED for {Symbol}! Exit: {ExitPrice}, NetPnL: +{NetPnL:F2}",
+            notification.Symbol, notification.ExitPrice, notification.NetRealizedPnL);
         return Task.CompletedTask;
     }
 }

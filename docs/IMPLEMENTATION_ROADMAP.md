@@ -30,9 +30,9 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 10 — Paper Trading and Order State Machine  
-> **Current Task:** Instant SignalR SELL toasts, FIFO cost basis, breakdown of Indian charges, net realized P&L  
-> **Next Up:** SignalR Notification System (Milestone 13)
+> **Active Milestone:** Milestone 13 — SignalR Notification System  
+> **Current Task:** Full typed SignalR Hubs, group subscriptions, notification center & persistence  
+> **Next Up:** Email and WhatsApp Integrations (Milestone 14)
 
 ---
 
@@ -603,7 +603,7 @@ Implement the signature BUY approval workflow with 2-second rejection window, se
 
 ---
 
-## Milestone 12: SELL Notifications and P&L [ ] Not Started
+## Milestone 12: SELL Notifications and P&L [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 10, Milestone 13  
