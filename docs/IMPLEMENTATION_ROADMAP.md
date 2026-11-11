@@ -31,8 +31,8 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 13 — SignalR Notification System  
-> **Current Task:** Multi-day paper simulation, backtesting replay & go-live checklist  
-> **Next Up:** Live Broker Deployment & Go-Live (Milestone 18)
+> **Current Task:** Live broker adapters, exchange credentials & production trading gate  
+> **Next Up:** Production System Verification & Handoff (Final Milestone 19)
 
 ---
 
@@ -855,7 +855,7 @@ Build the complete SignalR real-time notification infrastructure.
 
 ---
 
-## Milestone 18: Extended Paper Trading Validation [ ] Not Started
+## Milestone 18: Extended Paper Trading Validation [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 17  

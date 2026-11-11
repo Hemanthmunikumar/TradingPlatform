@@ -44,6 +44,7 @@ public static class DependencyInjection
         // Strategy Engine & Technical Indicators
         services.AddScoped<IIndicatorService, IndicatorService>();
         services.AddScoped<IStrategyEngine, StrategyEngine>();
+        services.AddScoped<IBacktestingService, BacktestingService>();
 
         // Pre-Order Risk Validation & Safety Engine
         services.AddScoped<IRiskValidationService, RiskValidationService>();
