@@ -144,3 +144,18 @@ export const notificationsApi = {
     return res.data;
   },
 };
+
+export const analyticsApi = {
+  getPortfolioAnalytics: async (tradingAccountId?: string, days = 30) => {
+    const res = await apiClient.get<any>('/analytics/portfolio', {
+      params: { tradingAccountId, days },
+    });
+    return res.data;
+  },
+  getDailyReport: async (date?: string, tradingAccountId?: string) => {
+    const res = await apiClient.get<any>('/reports/daily', {
+      params: { date, tradingAccountId },
+    });
+    return res.data;
+  },
+};

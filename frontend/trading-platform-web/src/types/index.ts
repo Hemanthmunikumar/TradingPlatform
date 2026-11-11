@@ -222,3 +222,51 @@ export interface SystemAlertNotificationDto {
   message: string;
   timestampUtc: string;
 }
+
+export interface DailyPnLDataPointDto {
+  date: string;
+  realizedPnL: number;
+  cumulativePnL: number;
+}
+
+export interface SymbolPnLSummaryDto {
+  symbol: string;
+  tradesCount: number;
+  totalQuantity: number;
+  realizedPnL: number;
+  totalCharges: number;
+  netPnL: number;
+}
+
+export interface StrategyPerformanceDto {
+  strategyName: string;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRatePercentage: number;
+  realizedNetPnL: number;
+  profitFactor: number;
+}
+
+export interface PortfolioAnalyticsDto {
+  userId: string;
+  tradingAccountId?: string;
+  totalPortfolioValue: number;
+  totalRealizedPnL: number;
+  totalUnrealizedPnL: number;
+  netTotalPnL: number;
+  todayPnL: number;
+  weekPnL: number;
+  monthPnL: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRatePercentage: number;
+  averageWinAmount: number;
+  averageLossAmount: number;
+  profitFactor: number;
+  maxDrawdownPercentage: number;
+  dailyPnLTrend: DailyPnLDataPointDto[];
+  symbolBreakdown: SymbolPnLSummaryDto[];
+  strategyBreakdown: StrategyPerformanceDto[];
+}

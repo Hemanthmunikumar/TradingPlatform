@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
+using TradingPlatform.Application.Interfaces.Analytics;
 using TradingPlatform.Application.Interfaces.Approvals;
 using TradingPlatform.Application.Interfaces.MarketData;
 using TradingPlatform.Application.Interfaces.Notifications;
@@ -12,6 +13,7 @@ using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Application.Interfaces.Trades;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
+using TradingPlatform.Infrastructure.Analytics;
 using TradingPlatform.Infrastructure.Approvals;
 using TradingPlatform.Infrastructure.MarketData;
 using TradingPlatform.Infrastructure.Notifications;
@@ -66,6 +68,9 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddHttpClient<IWhatsAppService, WhatsAppCloudApiService>();
         services.AddScoped<IDailyReportGeneratorService, DailyReportGeneratorService>();
+
+        // Portfolio Analytics & Performance Engine
+        services.AddScoped<IAnalyticsService, AnalyticsService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();

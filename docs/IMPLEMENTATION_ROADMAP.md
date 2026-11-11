@@ -31,7 +31,7 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 13 — SignalR Notification System  
-> **Current Task:** Full typed SignalR Hubs, group subscriptions, notification center & persistence  
+> **Current Task:** Cross-user isolation, credential encryption verification, worker recovery  
 > **Next Up:** Live Broker Deployment & Hardening (Milestone 16)
 
 ---
@@ -730,7 +730,7 @@ Build the complete SignalR real-time notification infrastructure.
 
 ---
 
-## Milestone 15: Reporting and Analytics [ ] Not Started
+## Milestone 15: Reporting and Analytics [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 12  
