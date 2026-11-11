@@ -7,7 +7,7 @@ namespace TradingPlatform.Infrastructure.Persistence;
 
 public class TradingDbContext(
     DbContextOptions<TradingDbContext> options,
-    ICurrentUserService currentUserService) : DbContext(options)
+    ICurrentUserService currentUserService) : DbContext(options), ITradingDbContext
 {
     private readonly ICurrentUserService _currentUserService = currentUserService;
 

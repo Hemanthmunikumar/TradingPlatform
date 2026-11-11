@@ -1,5 +1,10 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using TradingPlatform.API.Services;
 using TradingPlatform.Application;
+using TradingPlatform.Application.Common;
 using TradingPlatform.Contracts.Common;
 using TradingPlatform.Infrastructure;
 
@@ -24,6 +29,40 @@ try
     builder.Services.AddApplication();
     builder.Services.AddInfrastructure(builder.Configuration);
 
+    // Register HttpContext ambient tenant accessor (overrides default fallback)
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<ICurrentUserService, HttpContextCurrentUserService>();
+
+    // Configure JWT Bearer Authentication
+    var jwtSecret = builder.Configuration["Jwt:Secret"]
+        ?? "TradingPlatformSuperSecureDevelopmentSecretKey2026!MustBeAtLeast32Bytes";
+    var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "TradingPlatform.API";
+    var jwtAudience = builder.Configuration["Jwt:Audience"] ?? "TradingPlatform.Client";
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false; // set true in production via config
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateIssuer = true,
+            ValidIssuer = jwtIssuer,
+            ValidateAudience = true,
+            ValidAudience = jwtAudience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+    builder.Services.AddAuthorization();
+    builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddHealthChecks();
 
@@ -33,7 +72,11 @@ try
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();
 
-    // System and health endpoints
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    // Endpoints
+    app.MapControllers();
     app.MapHealthChecks("/health");
 
     app.MapGet("/api/v1/system/status", () =>

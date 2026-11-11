@@ -11,7 +11,11 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-        // Fallback user service (overridden by API HttpContextCurrentUserService when registered)
+        // Security Services
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ITokenService, JwtTokenService>();
+
+        // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
 
         // Register PostgreSQL with EF Core
@@ -27,6 +31,8 @@ public static class DependencyInjection
             });
             options.UseSnakeCaseNamingConvention();
         });
+
+        services.AddScoped<ITradingDbContext>(sp => sp.GetRequiredService<TradingDbContext>());
 
         return services;
     }

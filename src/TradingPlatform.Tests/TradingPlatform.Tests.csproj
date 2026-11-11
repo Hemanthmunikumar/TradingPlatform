@@ -10,6 +10,8 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" />
     <PackageReference Include="FluentAssertions" Version="8.11.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.15" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Moq" Version="4.21.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -24,6 +26,7 @@
     <ProjectReference Include="..\TradingPlatform.Domain\TradingPlatform.Domain.csproj" />
     <ProjectReference Include="..\TradingPlatform.Application\TradingPlatform.Application.csproj" />
     <ProjectReference Include="..\TradingPlatform.Contracts\TradingPlatform.Contracts.csproj" />
+    <ProjectReference Include="..\TradingPlatform.Infrastructure\TradingPlatform.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
