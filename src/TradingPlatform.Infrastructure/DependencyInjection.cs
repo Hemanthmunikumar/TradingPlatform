@@ -62,6 +62,11 @@ public static class DependencyInjection
         // Real-Time Notification Persistence
         services.AddScoped<INotificationRepository, NotificationRepository>();
 
+        // Email, WhatsApp & Daily Reporting Services
+        services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddHttpClient<IWhatsAppService, WhatsAppCloudApiService>();
+        services.AddScoped<IDailyReportGeneratorService, DailyReportGeneratorService>();
+
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
 
