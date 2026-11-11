@@ -30,9 +30,9 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 ## Current Focus
 
 > [!IMPORTANT]
-> **Active Milestone:** Milestone 7 — Market Data and Instrument Services  
-> **Current Task:** Instrument master sync, historical candles, quote cache, mock stream  
-> **Next Up:** Strategy Engine and Technical Indicators (Milestone 8)
+> **Active Milestone:** Milestone 8 — Strategy Engine and Technical Indicators  
+> **Current Task:** Deterministic technical indicators (VWAP, EMA, RSI, MACD, ATR), strategy engine, and signal models  
+> **Next Up:** Risk Engine (Milestone 9)
 
 ---
 
@@ -266,7 +266,7 @@ Build the API endpoints for managing broker connections, including OAuth flow or
 
 ### Deliverables
 
-- [ ] API endpoints:
+- [x] API endpoints:
   - [ ] `GET /api/broker-providers` — list supported brokers
   - [ ] `POST /api/broker-accounts` — create broker account link
   - [ ] `GET /api/broker-accounts` — list user's broker accounts
@@ -344,7 +344,7 @@ Initialize the React frontend project and build the core dashboard with authenti
 
 ---
 
-## Milestone 7: Market Data and Instrument Services [ ] Not Started
+## Milestone 7: Market Data and Instrument Services [x] Complete
 
 **Complexity:** L  
 **Dependencies:** Milestone 4  
@@ -355,26 +355,26 @@ Build the market data layer for instrument management, historical data, and quot
 
 ### Deliverables
 
-- [ ] Implement `IInstrumentService`:
-  - [ ] Instrument master data sync from broker
-  - [ ] Instrument search by symbol, name, exchange
-  - [ ] Watchlist management (create, add, remove)
-- [ ] Implement `IMarketDataService`:
-  - [ ] Historical OHLCV candle fetching
-  - [ ] Current quote retrieval
-  - [ ] Quote caching (in-memory, configurable TTL)
-  - [ ] Market status tracking (pre-open, open, closed)
-- [ ] API endpoints:
-  - [ ] `GET /api/instruments` — search instruments
-  - [ ] `GET /api/instruments/{id}/candles` — historical data
-  - [ ] `GET /api/instruments/{id}/quote` — current quote
-  - [ ] CRUD for watchlists
-  - [ ] `GET /api/market/status` — market hours status
-- [ ] Mock market data for paper trading:
-  - [ ] Synthetic price generation based on historical patterns
-  - [ ] Realistic bid-ask spreads
-  - [ ] Volume simulation
-- [ ] Unit tests for caching, market status, data transformations
+- [x] Implement `IInstrumentService`:
+  - [x] Instrument master data sync from broker
+  - [x] Instrument search by symbol, name, exchange
+  - [x] Watchlist management (create, add, remove)
+- [x] Implement `IMarketDataService`:
+  - [x] Historical OHLCV candle fetching
+  - [x] Current quote retrieval
+  - [x] Quote caching (in-memory, configurable TTL)
+  - [x] Market status tracking (pre-open, open, closed)
+- [x] API endpoints:
+  - [x] `GET /api/instruments` — search instruments
+  - [x] `GET /api/instruments/{id}/candles` — historical data
+  - [x] `GET /api/instruments/{id}/quote` — current quote
+  - [x] CRUD for watchlists
+  - [x] `GET /api/market/status` — market hours status
+- [x] Mock market data for paper trading:
+  - [x] Synthetic price generation based on historical patterns
+  - [x] Realistic bid-ask spreads
+  - [x] Volume simulation
+- [x] Unit tests for caching, market status, data transformations
 
 ### Acceptance Criteria
 

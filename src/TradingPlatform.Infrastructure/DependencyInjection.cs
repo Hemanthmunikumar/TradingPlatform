@@ -3,8 +3,10 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
+using TradingPlatform.Application.Interfaces.MarketData;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
+using TradingPlatform.Infrastructure.MarketData;
 using TradingPlatform.Infrastructure.Persistence;
 using TradingPlatform.Infrastructure.Security;
 
@@ -18,6 +20,12 @@ public static class DependencyInjection
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<ITokenService, JwtTokenService>();
         services.AddSingleton<ICredentialEncryptionService, Aes256GcmEncryptionService>();
+
+        // In-Memory Caching & Market Data Services
+        services.AddMemoryCache();
+        services.AddSingleton<IQuoteCache, QuoteCache>();
+        services.AddScoped<IInstrumentService, InstrumentService>();
+        services.AddScoped<IMarketDataService, MarketDataService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();
