@@ -2,9 +2,11 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using TradingPlatform.API.Hubs;
 using TradingPlatform.API.Services;
 using TradingPlatform.Application;
 using TradingPlatform.Application.Common;
+using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Contracts.Common;
 using TradingPlatform.Infrastructure;
 
@@ -66,11 +68,28 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddHealthChecks();
 
+    // SignalR Real-Time Hub & Notification Service
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<ITradingNotificationService, SignalRTradingNotificationService>();
+
+    // CORS for React Web / PWA
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("AllowFrontend", policy =>
+        {
+            policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        });
+    });
+
     var app = builder.Build();
 
     // Configure HTTP Pipeline
     app.UseSerilogRequestLogging();
     app.UseHttpsRedirection();
+    app.UseCors("AllowFrontend");
 
     app.UseAuthentication();
     app.UseAuthorization();
@@ -78,6 +97,7 @@ try
     // Endpoints
     app.MapControllers();
     app.MapHealthChecks("/health");
+    app.MapHub<TradingHub>("/hubs/trading");
 
     app.MapGet("/api/v1/system/status", () =>
     {

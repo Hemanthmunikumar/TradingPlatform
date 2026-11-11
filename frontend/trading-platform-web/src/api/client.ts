@@ -1,5 +1,5 @@
 import axios, { type AxiosError } from 'axios';
-import type { ApiResponse, AuthResponse } from '../types';
+import type { ApiResponse, AuthResponse, PendingTradeApprovalDto } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
@@ -59,3 +59,35 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const approvalsApi = {
+  getPending: async (tradingAccountId?: string) => {
+    const res = await apiClient.get<PendingTradeApprovalDto[]>('/trade-approvals/pending', {
+      params: { tradingAccountId },
+    });
+    return res.data;
+  },
+  getHistory: async (tradingAccountId?: string, page = 1, pageSize = 50) => {
+    const res = await apiClient.get<PendingTradeApprovalDto[]>('/trade-approvals', {
+      params: { tradingAccountId, page, pageSize },
+    });
+    return res.data;
+  },
+  reject: async (approvalId: string, reason?: string) => {
+    const res = await apiClient.post(`/trade-approvals/${approvalId}/reject`, { reason });
+    return res.data;
+  },
+  create: async (data: {
+    tradingAccountId: string;
+    instrumentId: string;
+    symbol: string;
+    companyName: string;
+    side: string;
+    quantity: number;
+    indicativePrice: number;
+    approvalDurationSeconds?: number;
+  }) => {
+    const res = await apiClient.post<PendingTradeApprovalDto>('/trade-approvals', data);
+    return res.data;
+  },
+};

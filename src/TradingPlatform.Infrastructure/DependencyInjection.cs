@@ -3,13 +3,17 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
+using TradingPlatform.Application.Interfaces.Approvals;
 using TradingPlatform.Application.Interfaces.MarketData;
+using TradingPlatform.Application.Interfaces.Notifications;
 using TradingPlatform.Application.Interfaces.Orders;
 using TradingPlatform.Application.Interfaces.Risk;
 using TradingPlatform.Application.Interfaces.Strategies;
 using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
+using TradingPlatform.Infrastructure.Approvals;
 using TradingPlatform.Infrastructure.MarketData;
+using TradingPlatform.Infrastructure.Notifications;
 using TradingPlatform.Infrastructure.Orders;
 using TradingPlatform.Infrastructure.Persistence;
 using TradingPlatform.Infrastructure.Risk;
@@ -45,6 +49,10 @@ public static class DependencyInjection
         services.AddSingleton<IOrderStateMachine, OrderStateMachine>();
         services.AddScoped<IPositionService, PositionService>();
         services.AddScoped<IOrderService, OrderService>();
+
+        // Trade Approvals & 2-Second BUY Rejection Workflow
+        services.AddSingleton<ITradingNotificationService, LoggingTradingNotificationService>();
+        services.AddScoped<ITradeApprovalService, TradeApprovalService>();
 
         // Default current user service (overridden by API HttpContextCurrentUserService when registered)
         services.AddScoped<ICurrentUserService, DefaultCurrentUserService>();

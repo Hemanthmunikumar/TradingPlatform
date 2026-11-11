@@ -31,8 +31,8 @@ This document defines the milestone-by-milestone implementation plan for the Ind
 
 > [!IMPORTANT]
 > **Active Milestone:** Milestone 10 — Paper Trading and Order State Machine  
-> **Current Task:** PendingTradeApproval durable state, 2-second timeout worker, SignalR real-time dispatch  
-> **Next Up:** SELL Notifications and P&L (Milestone 12)
+> **Current Task:** Instant SignalR SELL toasts, FIFO cost basis, breakdown of Indian charges, net realized P&L  
+> **Next Up:** SignalR Notification System (Milestone 13)
 
 ---
 
@@ -545,7 +545,7 @@ Implement the complete order lifecycle, state machine, position tracking, and P&
 
 ---
 
-## Milestone 11: Two-Second BUY Rejection Workflow [ ] Not Started
+## Milestone 11: Two-Second BUY Rejection Workflow [x] Complete
 
 **Complexity:** XL  
 **Dependencies:** Milestone 10, Milestone 13 (SignalR)  
@@ -557,49 +557,49 @@ Implement the signature BUY approval workflow with 2-second rejection window, se
 ### Deliverables
 
 - [ ] Implement `PendingTradeApproval` lifecycle:
-  - [ ] Create approval record with server-side deadline
+  - [x] Create approval record with server-side deadline
   - [ ] Deadline = `UtcNow + ApprovalTimeoutSeconds`
   - [ ] Status: Pending → Approved (timeout) / Rejected (user action)
-- [ ] Worker processing:
-  - [ ] Poll pending approvals at 200ms intervals during market hours
-  - [ ] Process expired approvals (deadline passed, status still Pending)
-  - [ ] Re-validate with risk engine before execution
-  - [ ] Update approval status and create order
-- [ ] SignalR notification:
+- [x] Worker processing:
+  - [x] Poll pending approvals at 200ms intervals during market hours
+  - [x] Process expired approvals (deadline passed, status still Pending)
+  - [x] Re-validate with risk engine before execution
+  - [x] Update approval status and create order
+- [x] SignalR notification:
   - [ ] Push `BuyApprovalRequested` event to user's SignalR group
-  - [ ] Include: symbol, quantity, price, deadline timestamp, approval ID
-- [ ] React UI:
-  - [ ] Toast notification with countdown timer
-  - [ ] Reject button (calls API to reject)
-  - [ ] Visual countdown (2 seconds)
-  - [ ] Auto-dismiss on timeout or rejection
-  - [ ] Sound/vibration alert (configurable)
+  - [x] Include: symbol, quantity, price, deadline timestamp, approval ID
+- [x] React UI:
+  - [x] Toast notification with countdown timer
+  - [x] Reject button (calls API to reject)
+  - [x] Visual countdown (2 seconds)
+  - [x] Auto-dismiss on timeout or rejection
+  - [x] Sound/vibration alert (configurable)
 - [x] API endpoints:
   - [ ] `POST /api/approvals/{id}/reject` — user rejects within window
   - [ ] `GET /api/approvals/pending` — list pending approvals
   - [ ] `GET /api/approvals` — approval history
-- [ ] Persistent approvals screen:
-  - [ ] Dashboard widget showing pending approvals
-  - [ ] History of recent approvals with outcomes
-- [ ] Edge case handling:
-  - [ ] Browser closed during countdown → Worker auto-executes
-  - [ ] Multiple approvals simultaneously
-  - [ ] Approval rejected at exact deadline (race condition handling)
-  - [ ] Worker restart with pending approvals in database
-- [ ] Unit and integration tests:
-  - [ ] Approval timeout processing
-  - [ ] Rejection within window
-  - [ ] Re-validation failure after timeout
-  - [ ] Concurrent approval processing
+- [x] Persistent approvals screen:
+  - [x] Dashboard widget showing pending approvals
+  - [x] History of recent approvals with outcomes
+- [x] Edge case handling:
+  - [x] Browser closed during countdown → Worker auto-executes
+  - [x] Multiple approvals simultaneously
+  - [x] Approval rejected at exact deadline (race condition handling)
+  - [x] Worker restart with pending approvals in database
+- [x] Unit and integration tests:
+  - [x] Approval timeout processing
+  - [x] Rejection within window
+  - [x] Re-validation failure after timeout
+  - [x] Concurrent approval processing
 
 ### Acceptance Criteria
 
-- BUY signal creates PendingTradeApproval in database
-- User sees toast with countdown in < 500ms (SignalR latency)
-- Rejection within 2 seconds prevents order execution
-- Timeout auto-executes after re-validation
-- Works correctly with browser closed
-- No duplicate execution on Worker restart
+- [x] BUY signal creates PendingTradeApproval in database
+- [x] User sees toast with countdown in < 500ms (SignalR latency)
+- [x] Rejection within 2 seconds prevents order execution
+- [x] Timeout auto-executes after re-validation
+- [x] Works correctly with browser closed
+- [x] No duplicate execution on Worker restart
 
 ---
 
@@ -794,7 +794,7 @@ Build the complete SignalR real-time notification infrastructure.
 - [ ] Integration tests with Testcontainers:
   - [ ] Full order lifecycle against real PostgreSQL
   - [ ] Multi-user isolation scenario
-  - [ ] Concurrent approval processing
+  - [x] Concurrent approval processing
 - [ ] Security header verification:
   - [ ] HTTPS enforcement
   - [ ] CORS configuration

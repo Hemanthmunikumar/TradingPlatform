@@ -24,6 +24,7 @@ try
     builder.Services.AddInfrastructure(builder.Configuration);
 
     builder.Services.AddHostedService<Worker>();
+    builder.Services.AddHostedService<ApprovalTimeoutProcessor>();
 
     var host = builder.Build();
     host.Run();

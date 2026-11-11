@@ -81,3 +81,25 @@ export interface TradingAccountDto {
   allocatedCapital: number;
   configuration?: AccountConfigurationDto;
 }
+
+export interface PendingTradeApprovalDto {
+  id: string;
+  tradingAccountId: string;
+  tradingSignalId?: string;
+  symbol: string;
+  companyName: string;
+  side: OrderSide;
+  quantity: number;
+  indicativePrice: number;
+  estimatedOrderValue: number;
+  stopLoss?: number;
+  target?: number;
+  riskAmount?: number;
+  reason: string;
+  approvalDeadlineUtc: string;
+  status: 'Pending' | 'Approved' | 'Rejected' | 'Expired';
+  decidedAtUtc?: string;
+  decisionReason?: string;
+  remainingSeconds: number;
+  isExpired: boolean;
+}
