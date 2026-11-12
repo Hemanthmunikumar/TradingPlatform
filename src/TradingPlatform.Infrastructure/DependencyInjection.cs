@@ -84,18 +84,25 @@ public static class DependencyInjection
         services.AddHttpClient<ZerodhaBrokerAdapter>();
         services.AddSingleton<IBrokerAdapterFactory, BrokerAdapterFactory>();
 
-        // Register PostgreSQL with EF Core
-        var connectionString = configuration.GetConnectionString("TradingDb")
-            ?? "Host=localhost;Port=5432;Database=trading_platform_dev;Username=trading_user;Password=trading_dev_pass;Include Error Detail=true";
+        // Register Database Context with EF Core (InMemory for zero-dependency local testing, Npgsql for PostgreSQL)
+        var useInMemory = configuration.GetValue<bool>("UseInMemoryDatabase", false);
+        var connectionString = configuration.GetConnectionString("TradingDb");
 
         services.AddDbContext<TradingDbContext>(options =>
         {
-            options.UseNpgsql(connectionString, npgsqlOptions =>
+            if (useInMemory || string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("InMemory"))
             {
-                npgsqlOptions.MigrationsAssembly(typeof(TradingDbContext).Assembly.FullName);
-                npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), errorCodesToAdd: null);
-            });
-            options.UseSnakeCaseNamingConvention();
+                options.UseInMemoryDatabase("TradingPlatform_Dev_InMemory");
+            }
+            else
+            {
+                options.UseNpgsql(connectionString, npgsqlOptions =>
+                {
+                    npgsqlOptions.MigrationsAssembly(typeof(TradingDbContext).Assembly.FullName);
+                    npgsqlOptions.EnableRetryOnFailure(maxRetryCount: 5, maxRetryDelay: TimeSpan.FromSeconds(30), errorCodesToAdd: null);
+                });
+                options.UseSnakeCaseNamingConvention();
+            }
         });
 
         services.AddScoped<ITradingDbContext>(sp => sp.GetRequiredService<TradingDbContext>());
