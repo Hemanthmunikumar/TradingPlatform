@@ -445,12 +445,12 @@ export const BrokersPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                  Allocated Capital (₹ INR)
+                  Allocated Capital (₹ INR) <span className="text-[11px] text-slate-400 font-normal lowercase">(min ₹1,000)</span>
                 </label>
                 <input
                   type="number"
                   min={1000}
-                  step={5000}
+                  step={1000}
                   value={initialCapital}
                   onChange={(e) => setInitialCapital(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
