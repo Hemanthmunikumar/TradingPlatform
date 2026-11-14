@@ -10,7 +10,8 @@ import {
   X, 
   CheckCircle2, 
   TrendingUp,
-  Clock
+  Clock,
+  HelpCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationCenter } from '../components/NotificationCenter';
@@ -28,6 +29,7 @@ export const DashboardLayout: React.FC = () => {
     { path: '/approvals', label: 'Pending Approvals', icon: Clock },
     { path: '/orders', label: 'Orders & Trades', icon: TrendingUp },
     { path: '/settings', label: 'Risk & Strategy', icon: Sliders },
+    { path: '/help', label: 'Help / Support', icon: HelpCircle },
   ];
 
   return (

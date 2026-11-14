@@ -1,5 +1,6 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using TradingPlatform.API.Hubs;
@@ -90,11 +91,21 @@ try
 
     var app = builder.Build();
 
-    // Ensure database and initial metadata seed data exist
+    // Ensure database migration and initial metadata seed data exist
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<TradingPlatform.Infrastructure.Persistence.TradingDbContext>();
-        db.Database.EnsureCreated();
+        if (db.Database.IsRelational())
+        {
+            db.Database.Migrate();
+        }
+        else
+        {
+            db.Database.EnsureCreated();
+        }
+
+        var logger = scope.ServiceProvider.GetService<ILogger<Program>>();
+        TradingPlatform.Infrastructure.Persistence.DatabaseSeeder.SeedAsync(db, scope.ServiceProvider, logger).GetAwaiter().GetResult();
     }
 
     // Configure HTTP Pipeline

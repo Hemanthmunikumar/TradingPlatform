@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Plus, 
   Layers, 
@@ -9,7 +10,8 @@ import {
   AlertCircle, 
   CheckCircle2, 
   RefreshCw,
-  X
+  X,
+  HelpCircle
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import type { 
@@ -179,6 +181,22 @@ export const BrokersPage: React.FC = () => {
             Connect New Broker
           </button>
         </div>
+      </div>
+
+      {/* Help Banner */}
+      <div className="p-3.5 rounded-xl bg-sky-950/40 border border-sky-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5 text-sky-300">
+          <HelpCircle size={18} className="shrink-0 text-sky-400" />
+          <span>
+            Need help finding your <strong>API Key</strong>, <strong>API Secret</strong>, or <strong>Redirect URL</strong>? Follow our step-by-step walkthrough.
+          </span>
+        </div>
+        <Link
+          to="/help"
+          className="inline-flex items-center gap-1 font-bold text-sky-400 hover:text-sky-300 underline shrink-0"
+        >
+          View Broker Setup Guide &rarr;
+        </Link>
       </div>
 
       {error && (

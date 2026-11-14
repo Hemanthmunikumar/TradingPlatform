@@ -86,7 +86,8 @@ public static class DependencyInjection
 
         // Register Database Context with EF Core (InMemory for zero-dependency local testing, Npgsql for PostgreSQL)
         var useInMemory = configuration.GetValue<bool>("UseInMemoryDatabase", false);
-        var connectionString = configuration.GetConnectionString("TradingDb");
+        var connectionString = configuration.GetConnectionString("TradingDb") 
+            ?? configuration.GetConnectionString("DefaultConnection");
 
         services.AddDbContext<TradingDbContext>(options =>
         {
