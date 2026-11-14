@@ -35,6 +35,41 @@ export const BrokersPage: React.FC = () => {
   const [tradingMode, setTradingMode] = useState<TradingMode>('Paper');
   const [initialCapital, setInitialCapital] = useState(500000);
 
+  const selectedProvider = providers.find((p) => p.id === selectedProviderId);
+
+  const handleSelectProvider = (providerId: string) => {
+    setSelectedProviderId(providerId);
+    const prov = providers.find((p) => p.id === providerId);
+    if (prov) {
+      if (prov.code === 'Mock') {
+        setDisplayName('Mock Simulator (Paper)');
+        setApiKey('mock_api_key_sandbox');
+        setApiSecret('mock_api_secret_sandbox');
+        setTradingMode('Paper');
+      } else if (prov.code === 'Upstox') {
+        if (!displayName || displayName.startsWith('Mock') || displayName.startsWith('Zerodha')) {
+          setDisplayName('Upstox Primary');
+        }
+        if (apiKey.startsWith('mock_')) setApiKey('');
+        if (apiSecret.startsWith('mock_')) setApiSecret('');
+      } else if (prov.code === 'Zerodha') {
+        if (!displayName || displayName.startsWith('Mock') || displayName.startsWith('Upstox')) {
+          setDisplayName('Zerodha Kite Primary');
+        }
+        if (apiKey.startsWith('mock_')) setApiKey('');
+        if (apiSecret.startsWith('mock_')) setApiSecret('');
+      }
+    }
+  };
+
+  const openModal = () => {
+    setIsModalOpen(true);
+    if (providers.length > 0) {
+      const targetId = selectedProviderId || providers[0].id;
+      handleSelectProvider(targetId);
+    }
+  };
+
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
@@ -137,7 +172,7 @@ export const BrokersPage: React.FC = () => {
             Refresh
           </button>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openModal}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-sky-500/20 transition"
           >
             <Plus size={16} />
@@ -265,15 +300,47 @@ export const BrokersPage: React.FC = () => {
                 </label>
                 <select
                   value={selectedProviderId}
-                  onChange={(e) => setSelectedProviderId(e.target.value)}
+                  onChange={(e) => handleSelectProvider(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  {providers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.code})
-                    </option>
-                  ))}
+                  {providers.length === 0 ? (
+                    <option value="">Loading providers from server...</option>
+                  ) : (
+                    providers.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} ({p.code})
+                      </option>
+                    ))
+                  )}
                 </select>
+
+                {selectedProvider && (
+                  <div className="mt-2 p-2.5 rounded-lg bg-sky-950/40 border border-sky-800/40 text-xs text-sky-300 leading-relaxed">
+                    {selectedProvider.code === 'Mock' && (
+                      <span>
+                        ⚡ <strong>Mock Simulator:</strong> Built-in zero-latency paper engine. Pre-filled with sandbox credentials for instant testing without needing real API keys.
+                      </span>
+                    )}
+                    {selectedProvider.code === 'Upstox' && (
+                      <span>
+                        🌐 <strong>Upstox API:</strong> Enter your App Key &amp; Secret from the{' '}
+                        <a href="https://developer.upstox.com" target="_blank" rel="noreferrer" className="underline font-bold text-sky-200">
+                          Upstox Developer Portal
+                        </a>
+                        . After saving, click "Log In / Authorize" to complete 1-click OAuth.
+                      </span>
+                    )}
+                    {selectedProvider.code === 'Zerodha' && (
+                      <span>
+                        📈 <strong>Zerodha Kite:</strong> Enter your API Key &amp; Secret from the{' '}
+                        <a href="https://developers.kite.trade" target="_blank" rel="noreferrer" className="underline font-bold text-sky-200">
+                          Kite Connect Console
+                        </a>
+                        . After saving, click "Log In / Authorize" to generate daily token.
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

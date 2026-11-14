@@ -64,7 +64,11 @@ try
     });
 
     builder.Services.AddAuthorization();
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(options =>
+        {
+            options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+        });
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddHealthChecks();
 
@@ -85,6 +89,13 @@ try
     });
 
     var app = builder.Build();
+
+    // Ensure database and initial metadata seed data exist
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<TradingPlatform.Infrastructure.Persistence.TradingDbContext>();
+        db.Database.EnsureCreated();
+    }
 
     // Configure HTTP Pipeline
     app.UseSerilogRequestLogging();

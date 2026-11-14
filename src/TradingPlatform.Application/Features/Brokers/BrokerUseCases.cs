@@ -16,11 +16,59 @@ public class GetBrokerProvidersHandler(ITradingDbContext dbContext) : IRequestHa
 {
     public async Task<IReadOnlyList<BrokerProviderDto>> Handle(GetBrokerProvidersQuery request, CancellationToken cancellationToken)
     {
-        return await dbContext.BrokerProviders
+        var existing = await dbContext.BrokerProviders
             .Where(bp => bp.IsActive)
             .OrderBy(bp => bp.Name)
             .Select(bp => new BrokerProviderDto(bp.Id, bp.Name, bp.Code, bp.ApiBaseUrl, bp.IsActive))
             .ToListAsync(cancellationToken);
+
+        if (existing.Count > 0)
+        {
+            return existing;
+        }
+
+        // Auto-seed default providers if running on fresh or in-memory database
+        var defaultProviders = new List<BrokerProvider>
+        {
+            new()
+            {
+                Id = Guid.Parse("10000000-0000-0000-0000-000000000001"),
+                Name = "Mock Simulator",
+                Code = BrokerCode.Mock,
+                ApiBaseUrl = "http://localhost:5000/mock-broker",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.Parse("10000000-0000-0000-0000-000000000002"),
+                Name = "Upstox",
+                Code = BrokerCode.Upstox,
+                ApiBaseUrl = "https://api.upstox.com/v2",
+                WebSocketUrl = "wss://ws-feed.upstox.com/v2/feed",
+                AuthorizationUrl = "https://api.upstox.com/v2/login/authorization/dialog",
+                TokenUrl = "https://api.upstox.com/v2/login/authorization/token",
+                IsActive = true
+            },
+            new()
+            {
+                Id = Guid.Parse("10000000-0000-0000-0000-000000000003"),
+                Name = "Zerodha",
+                Code = BrokerCode.Zerodha,
+                ApiBaseUrl = "https://api.kite.trade",
+                WebSocketUrl = "wss://ws.kite.trade",
+                AuthorizationUrl = "https://kite.zerodha.com/connect/login",
+                TokenUrl = "https://api.kite.trade/session/token",
+                IsActive = true
+            }
+        };
+
+        dbContext.BrokerProviders.AddRange(defaultProviders);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return defaultProviders
+            .Select(bp => new BrokerProviderDto(bp.Id, bp.Name, bp.Code, bp.ApiBaseUrl, bp.IsActive))
+            .OrderBy(bp => bp.Name)
+            .ToList();
     }
 }
 
