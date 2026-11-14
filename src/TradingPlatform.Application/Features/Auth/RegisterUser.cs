@@ -44,9 +44,19 @@ public class RegisterUserHandler(
             throw new InvalidOperationException($"User with email '{req.Email}' already exists.");
         }
 
-        // Get default User role
-        var defaultRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == "User", cancellationToken)
-            ?? throw new InvalidOperationException("Default User role not found in database.");
+        // Get or create default User role
+        var defaultRole = await dbContext.Roles.FirstOrDefaultAsync(r => r.Name == "User", cancellationToken);
+        if (defaultRole == null)
+        {
+            defaultRole = new Role
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
+                Name = "User",
+                Description = "Standard Trading User"
+            };
+            dbContext.Roles.Add(defaultRole);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         var user = new User
         {
