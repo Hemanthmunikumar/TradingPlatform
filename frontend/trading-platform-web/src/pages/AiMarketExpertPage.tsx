@@ -11,7 +11,12 @@ import {
   RefreshCw, 
   Zap, 
   Eye,
-  DollarSign
+  DollarSign,
+  Sliders,
+  Key,
+  X,
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import type { ApiResponse } from '../types';
@@ -34,6 +39,17 @@ export interface AiAnalysisResultDto {
   analyzedAtUtc: string;
 }
 
+export interface AiAdvisorConfig {
+  provider: string;
+  apiKey?: string;
+  hasApiKey: boolean;
+  model: string;
+  minConfidenceThreshold: number;
+  enableDipAccumulation: boolean;
+  enableSpecialWatchlist: boolean;
+  activeSource: string; // 'UI' | 'AppSettings'
+}
+
 export const AiMarketExpertPage: React.FC = () => {
   const [analyses, setAnalyses] = useState<AiAnalysisResultDto[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
@@ -42,6 +58,75 @@ export const AiMarketExpertPage: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simMessage, setSimMessage] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string>('ALL');
+
+  // AI Configuration State
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [config, setConfig] = useState<AiAdvisorConfig>({
+    provider: 'GeminiPro',
+    apiKey: '',
+    hasApiKey: false,
+    model: 'gemini-1.5-pro',
+    minConfidenceThreshold: 0.80,
+    enableDipAccumulation: true,
+    enableSpecialWatchlist: true,
+    activeSource: 'AppSettings'
+  });
+  const [savingConfig, setSavingConfig] = useState(false);
+  const [configSuccessMsg, setConfigSuccessMsg] = useState<string | null>(null);
+
+  const fetchConfig = async () => {
+    try {
+      const res = await apiClient.get<ApiResponse<AiAdvisorConfig>>('/ai/config');
+      if (res.data.success && res.data.data) {
+        setConfig(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load AI advisor configuration', err);
+    }
+  };
+
+  const handleSaveConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingConfig(true);
+    setConfigSuccessMsg(null);
+    try {
+      const res = await apiClient.post<ApiResponse<AiAdvisorConfig>>('/ai/config', config);
+      if (res.data.success && res.data.data) {
+        setConfig(res.data.data);
+        setConfigSuccessMsg('Settings saved! Using ' + res.data.data.provider + ' (' + res.data.data.activeSource + ')');
+        setTimeout(() => {
+          setIsConfigOpen(false);
+          setConfigSuccessMsg(null);
+        }, 1500);
+        await fetchData();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update AI configuration');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleResetConfig = async () => {
+    if (!confirm('Revert AI Advisor settings to appsettings.json defaults?')) return;
+    setSavingConfig(true);
+    try {
+      const res = await apiClient.post<ApiResponse<AiAdvisorConfig>>('/ai/config/reset');
+      if (res.data.success && res.data.data) {
+        setConfig(res.data.data);
+        setConfigSuccessMsg('Restored to appsettings.json defaults!');
+        setTimeout(() => {
+          setIsConfigOpen(false);
+          setConfigSuccessMsg(null);
+        }, 1500);
+        await fetchData();
+      }
+    } catch (err: any) {
+      alert('Failed to reset configuration');
+    } finally {
+      setSavingConfig(false);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -67,6 +152,7 @@ export const AiMarketExpertPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    fetchConfig();
   }, []);
 
   const handleAddWatchlist = async (e: React.FormEvent) => {
@@ -172,6 +258,18 @@ export const AiMarketExpertPage: React.FC = () => {
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* AI Settings Modal Toggle */}
+          <button
+            onClick={() => setIsConfigOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 rounded-lg text-xs font-semibold border border-indigo-500/30 transition shadow-sm"
+          >
+            <Sliders size={14} />
+            AI Advisor Settings
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-500/30 text-indigo-200">
+              {config.provider} ({config.activeSource})
+            </span>
+          </button>
+
           <button
             onClick={fetchData}
             disabled={isLoading}
@@ -193,6 +291,198 @@ export const AiMarketExpertPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* AI Configuration Modal */}
+      {isConfigOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl shadow-indigo-500/10">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                  <Sliders size={18} />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    AI Advisor Configuration
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      config.activeSource === 'UI'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : 'bg-slate-800 text-slate-300 border border-slate-700'
+                    }`}>
+                      Source: {config.activeSource === 'UI' ? 'UI Override (Active)' : 'appsettings.json Default'}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Switch providers or fine-tune algorithmic confidence and indicators
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsConfigOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveConfig} className="p-6 space-y-4">
+              {configSuccessMsg && (
+                <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-xs flex items-center gap-2">
+                  <Check size={16} />
+                  {configSuccessMsg}
+                </div>
+              )}
+
+              {/* Provider Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  AI Model / Provider
+                </label>
+                <select
+                  value={config.provider}
+                  onChange={(e) => setConfig({ ...config, provider: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500 transition"
+                >
+                  <option value="GeminiPro">Google Gemini Pro (Configured Default)</option>
+                  <option value="BuiltInQuant">Built-in Quantitative Expert Engine (Zero Latency C#)</option>
+                  <option value="OpenAI">OpenAI (GPT-4o / GPT-4o-mini)</option>
+                  <option value="Claude">Anthropic Claude (Claude 3.5 Sonnet)</option>
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Default is <strong>GeminiPro</strong> from <code>appsettings.json</code>. If no API key is provided, the platform automatically uses the ultra-fast built-in quant engine (&lt;5ms).
+                </p>
+              </div>
+
+              {/* Model Identifier */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Model Identifier
+                </label>
+                <input
+                  type="text"
+                  value={config.model}
+                  onChange={(e) => setConfig({ ...config, model: e.target.value })}
+                  placeholder="e.g. gemini-1.5-pro, gemini-1.5-flash, gpt-4o"
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-indigo-500 transition"
+                />
+              </div>
+
+              {/* API Key */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Key size={13} className="text-indigo-400" />
+                    API Key (Secret)
+                  </label>
+                  {config.hasApiKey && (
+                    <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      ✓ Key Configured
+                    </span>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  value={config.apiKey || ''}
+                  onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
+                  placeholder={config.hasApiKey ? '•••••••••••••••• (Leave blank to keep existing)' : 'Paste API Key (e.g. AIzaSy...)'}
+                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono focus:outline-none focus:border-indigo-500 transition"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Leave blank to maintain the key configured in <code>appsettings.json</code> or system environment.
+                </p>
+              </div>
+
+              {/* Minimum Conviction Slider */}
+              <div>
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-semibold text-slate-300">Minimum Conviction Threshold</span>
+                  <span className="font-bold text-indigo-400 font-mono">
+                    {Math.round(config.minConfidenceThreshold * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0.60"
+                  max="0.95"
+                  step="0.05"
+                  value={config.minConfidenceThreshold}
+                  onChange={(e) => setConfig({ ...config, minConfidenceThreshold: parseFloat(e.target.value) })}
+                  className="w-full accent-indigo-500 bg-slate-800 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 mt-0.5">
+                  <span>60% (More signals)</span>
+                  <span>80% (Recommended)</span>
+                  <span>95% (High Conviction Only)</span>
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                  <input
+                    type="checkbox"
+                    checked={config.enableDipAccumulation}
+                    onChange={(e) => setConfig({ ...config, enableDipAccumulation: e.target.checked })}
+                    className="mt-0.5 accent-indigo-500 rounded"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-white block">Holdings Dip Accumulation</span>
+                    <span className="text-[11px] text-slate-400">Suggest "Buy the Dip" when quality holdings pull back to key support.</span>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 cursor-pointer hover:border-slate-700 transition">
+                  <input
+                    type="checkbox"
+                    checked={config.enableSpecialWatchlist}
+                    onChange={(e) => setConfig({ ...config, enableSpecialWatchlist: e.target.checked })}
+                    className="mt-0.5 accent-indigo-500 rounded"
+                  />
+                  <div>
+                    <span className="text-xs font-bold text-white block">Special Watchlist Scan</span>
+                    <span className="text-[11px] text-slate-400">Run 3-timeframe trend scan on custom monitored stocks.</span>
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleResetConfig}
+                  disabled={savingConfig}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg border border-slate-700 transition"
+                  title="Revert all settings to appsettings.json values"
+                >
+                  <RotateCcw size={13} />
+                  Reset to JSON Defaults
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigOpen(false)}
+                    className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white rounded-lg transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingConfig}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-500 to-sky-600 hover:from-indigo-400 hover:to-sky-500 text-white rounded-lg text-xs font-bold shadow-md shadow-indigo-500/20 transition"
+                  >
+                    <Check size={14} />
+                    {savingConfig ? 'Saving...' : 'Save & Apply'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Simulation Feedback Alert */}
       {simMessage && (

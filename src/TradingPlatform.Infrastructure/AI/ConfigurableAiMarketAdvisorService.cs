@@ -18,18 +18,112 @@ public class ConfigurableAiMarketAdvisorService(
     HttpClient httpClient,
     ILogger<ConfigurableAiMarketAdvisorService> logger) : IAiMarketAdvisorService
 {
-    private readonly string _configuredProvider = configuration["AiAdvisor:Provider"] ?? "GeminiPro";
-    private readonly string? _geminiApiKey = configuration["AiAdvisor:GeminiApiKey"] 
-        ?? configuration["GEMINI_API_KEY"];
+    private static AiAdvisorConfigDto? _uiOverrideConfig;
+    private static readonly object _configLock = new();
+
+    private static string? MaskApiKey(string? key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return null;
+        if (key.Length <= 8) return "********";
+        return string.Concat(key.AsSpan(0, 4), "...", key.AsSpan(key.Length - 4));
+    }
+
+    private AiAdvisorConfigDto GetEffectiveConfig()
+    {
+        lock (_configLock)
+        {
+            if (_uiOverrideConfig != null) return _uiOverrideConfig;
+
+            var provider = configuration["AiAdvisor:Provider"] ?? "GeminiPro";
+            var envKey = configuration["AiAdvisor:GeminiApiKey"] ?? configuration["GEMINI_API_KEY"];
+            var model = configuration["AiAdvisor:Model"] ?? "gemini-1.5-pro";
+            var minConv = decimal.TryParse(configuration["AiAdvisor:MinConvictionThreshold"], out var mc) ? mc : 0.80m;
+            var dip = !bool.TryParse(configuration["AiAdvisor:EnableDipAccumulation"], out var d) || d;
+            var spec = !bool.TryParse(configuration["AiAdvisor:EnableSpecialWatchlist"], out var s) || s;
+
+            return new AiAdvisorConfigDto
+            {
+                Provider = provider,
+                ApiKey = envKey,
+                HasApiKey = !string.IsNullOrWhiteSpace(envKey),
+                Model = model,
+                MinConfidenceThreshold = minConv,
+                EnableDipAccumulation = dip,
+                EnableSpecialWatchlist = spec,
+                ActiveSource = "AppSettings"
+            };
+        }
+    }
+
+    public Task<AiAdvisorConfigDto> GetConfigurationAsync(CancellationToken ct = default)
+    {
+        lock (_configLock)
+        {
+            var config = GetEffectiveConfig();
+            return Task.FromResult(new AiAdvisorConfigDto
+            {
+                Provider = config.Provider,
+                ApiKey = MaskApiKey(config.ApiKey),
+                HasApiKey = !string.IsNullOrWhiteSpace(config.ApiKey),
+                Model = config.Model,
+                MinConfidenceThreshold = config.MinConfidenceThreshold,
+                EnableDipAccumulation = config.EnableDipAccumulation,
+                EnableSpecialWatchlist = config.EnableSpecialWatchlist,
+                ActiveSource = _uiOverrideConfig != null ? "UI" : "AppSettings"
+            });
+        }
+    }
+
+    public Task<AiAdvisorConfigDto> UpdateConfigurationAsync(AiAdvisorConfigDto updateDto, CancellationToken ct = default)
+    {
+        lock (_configLock)
+        {
+            string? effectiveApiKey = updateDto.ApiKey;
+            // If ApiKey was masked (e.g. contains ***), preserve the previous key
+            if (!string.IsNullOrWhiteSpace(updateDto.ApiKey) && updateDto.ApiKey.Contains("***"))
+            {
+                effectiveApiKey = _uiOverrideConfig?.ApiKey 
+                    ?? configuration["AiAdvisor:GeminiApiKey"] 
+                    ?? configuration["GEMINI_API_KEY"];
+            }
+
+            _uiOverrideConfig = new AiAdvisorConfigDto
+            {
+                Provider = string.IsNullOrWhiteSpace(updateDto.Provider) ? "GeminiPro" : updateDto.Provider,
+                ApiKey = effectiveApiKey,
+                HasApiKey = !string.IsNullOrWhiteSpace(effectiveApiKey),
+                Model = string.IsNullOrWhiteSpace(updateDto.Model) ? "gemini-1.5-pro" : updateDto.Model,
+                MinConfidenceThreshold = updateDto.MinConfidenceThreshold > 0 ? updateDto.MinConfidenceThreshold : 0.80m,
+                EnableDipAccumulation = updateDto.EnableDipAccumulation,
+                EnableSpecialWatchlist = updateDto.EnableSpecialWatchlist,
+                ActiveSource = "UI"
+            };
+
+            logger.LogInformation("AI Advisor configuration updated from UI: Provider={Provider}, Model={Model}", _uiOverrideConfig.Provider, _uiOverrideConfig.Model);
+            return GetConfigurationAsync(ct);
+        }
+    }
+
+    public Task<AiAdvisorConfigDto> ResetConfigurationAsync(CancellationToken ct = default)
+    {
+        lock (_configLock)
+        {
+            _uiOverrideConfig = null;
+            logger.LogInformation("AI Advisor configuration reset to appsettings.json defaults.");
+            return GetConfigurationAsync(ct);
+        }
+    }
 
     public async Task<AiAnalysisResult> AnalyzeStockAsync(AiAnalysisRequest request, CancellationToken ct = default)
     {
-        // If external Gemini API Key is configured and provider is Gemini, we can query live Gemini API
-        if (_configuredProvider.Equals("GeminiPro", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(_geminiApiKey))
+        var config = GetEffectiveConfig();
+
+        // If external Gemini API Key is configured and provider is Gemini, query live Gemini API
+        if (config.Provider.Equals("GeminiPro", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(config.ApiKey))
         {
             try
             {
-                var liveResult = await QueryGeminiProAsync(request, ct);
+                var liveResult = await QueryGeminiProAsync(request, config, ct);
                 if (liveResult != null) return liveResult;
             }
             catch (Exception ex)
@@ -39,11 +133,12 @@ public class ConfigurableAiMarketAdvisorService(
         }
 
         // Built-in Real-Time Quantitative Expert Engine (High-speed & Zero external latency)
-        return EvaluateQuantRules(request);
+        return EvaluateQuantRules(request, config);
     }
 
     public async Task<IReadOnlyList<AiAnalysisResult>> ScanHoldingsAndWatchlistAsync(Guid? accountId = null, CancellationToken ct = default)
     {
+        var config = GetEffectiveConfig();
         var userId = currentUserService.UserId ?? Guid.Empty;
         var results = new List<AiAnalysisResult>();
 
@@ -54,16 +149,19 @@ public class ConfigurableAiMarketAdvisorService(
         var defaultUniverse = new[] { "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "TATAMOTORS" };
         foreach (var sym in defaultUniverse) targetSymbols.Add(sym);
 
-        // Add user's custom Special Monitor watchlist
-        var watchlistItems = await dbContext.InstrumentUniverses
-            .AsNoTracking()
-            .Include(u => u.Items)
-                .ThenInclude(i => i.Instrument)
-            .Where(u => u.Name == "Special Monitor")
-            .SelectMany(u => u.Items.Select(i => i.Instrument.TradingSymbol))
-            .ToListAsync(ct);
+        // Add user's custom Special Monitor watchlist if enabled
+        if (config.EnableSpecialWatchlist)
+        {
+            var watchlistItems = await dbContext.InstrumentUniverses
+                .AsNoTracking()
+                .Include(u => u.Items)
+                    .ThenInclude(i => i.Instrument)
+                .Where(u => u.Name == "Special Monitor")
+                .SelectMany(u => u.Items.Select(i => i.Instrument.TradingSymbol))
+                .ToListAsync(ct);
 
-        foreach (var sym in watchlistItems) targetSymbols.Add(sym);
+            foreach (var sym in watchlistItems) targetSymbols.Add(sym);
+        }
 
         // Query active positions/holdings
         var openPositions = await dbContext.Positions
@@ -130,7 +228,7 @@ public class ConfigurableAiMarketAdvisorService(
         return results.OrderByDescending(r => r.ConvictionScore).ToList();
     }
 
-    private AiAnalysisResult EvaluateQuantRules(AiAnalysisRequest req)
+    private AiAnalysisResult EvaluateQuantRules(AiAnalysisRequest req, AiAdvisorConfigDto config)
     {
         string action;
         decimal conviction;
@@ -164,7 +262,7 @@ public class ConfigurableAiMarketAdvisorService(
                 riskNote = "Protect gains: Do not allow winning trades to slide into negative territory.";
             }
             // Buy The Dip / Accumulation Scenario
-            else if (pnlPercent <= -1.5m && req.Rsi14 <= 38m && req.CurrentPrice >= req.Ema200)
+            else if (config.EnableDipAccumulation && pnlPercent <= -1.5m && req.Rsi14 <= 38m && req.CurrentPrice >= req.Ema200)
             {
                 action = "BUY_THE_DIP";
                 conviction = 0.89m;
@@ -213,7 +311,7 @@ public class ConfigurableAiMarketAdvisorService(
                 rationale = "Price cleared 20-day EMA resistance accompanied by expanding volume. RSI is in optimal momentum acceleration zone (50-66).";
                 riskNote = "Risk-to-reward ratio 1:2.2. Stop-loss at ₹" + stopLoss.ToString("F2") + ".";
             }
-            else if (req.CurrentPrice > req.Ema200 && req.Rsi14 <= 35m)
+            else if (config.EnableDipAccumulation && req.CurrentPrice > req.Ema200 && req.Rsi14 <= 35m)
             {
                 action = "BUY_THE_DIP";
                 conviction = 0.86m;
@@ -251,14 +349,15 @@ public class ConfigurableAiMarketAdvisorService(
             Summary: summary,
             TechnicalRationale: rationale,
             RiskNote: riskNote,
-            ProviderName: _configuredProvider,
+            ProviderName: config.Provider,
             AnalyzedAtUtc: DateTime.UtcNow
         );
     }
 
-    private async Task<AiAnalysisResult?> QueryGeminiProAsync(AiAnalysisRequest req, CancellationToken ct)
+    private async Task<AiAnalysisResult?> QueryGeminiProAsync(AiAnalysisRequest req, AiAdvisorConfigDto config, CancellationToken ct)
     {
-        // When user configures their Gemini API Key, this endpoint calls Google Gemini Pro
+        if (string.IsNullOrWhiteSpace(config.ApiKey)) return null;
+
         var prompt = $"Analyze Indian stock {req.Symbol} @ ₹{req.CurrentPrice:F2} (Day: {req.DayChangePercent:F2}%, RSI: {req.Rsi14:F1}, EMA20: {req.Ema20:F2}, EMA50: {req.Ema50:F2}, EMA200: {req.Ema200:F2}, ExistingHolding: {req.IsExistingHolding}). Return JSON with action (STRONG_BUY, BUY_THE_DIP, HOLD, BOOK_PROFIT_50, EXIT_STOP_LOSS), convictionScore (0.0 to 1.0), stopLoss, target1, target2, summary, technicalRationale.";
 
         var requestBody = new
@@ -269,14 +368,14 @@ public class ConfigurableAiMarketAdvisorService(
             }
         };
 
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={_geminiApiKey}";
+        var modelName = string.IsNullOrWhiteSpace(config.Model) ? "gemini-1.5-pro" : config.Model;
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={config.ApiKey}";
         var response = await httpClient.PostAsJsonAsync(url, requestBody, ct);
 
         if (response.IsSuccessStatusCode)
         {
             var jsonStr = await response.Content.ReadAsStringAsync(ct);
-            // If parsed cleanly, return Gemini result, else fall back to quant rules
-            logger.LogInformation("Successfully retrieved analysis from live Gemini Pro API for {Symbol}", req.Symbol);
+            logger.LogInformation("Successfully retrieved analysis from live {Model} API for {Symbol}", modelName, req.Symbol);
         }
 
         return null; // Triggers quant fallback gracefully

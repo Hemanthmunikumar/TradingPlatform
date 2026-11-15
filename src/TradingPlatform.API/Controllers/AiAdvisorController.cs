@@ -183,6 +183,30 @@ public class AiAdvisorController(
 
         return Ok(ApiResponse<PendingTradeApprovalDto>.Ok(approval, "2-Second BUY approval window triggered. Observe live countdown toast in UI."));
     }
+
+    [HttpGet("config")]
+    [ProducesResponseType(typeof(ApiResponse<AiAdvisorConfigDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetConfig(CancellationToken ct)
+    {
+        var config = await aiAdvisorService.GetConfigurationAsync(ct);
+        return Ok(ApiResponse<AiAdvisorConfigDto>.Ok(config, "AI Advisor configuration retrieved"));
+    }
+
+    [HttpPost("config")]
+    [ProducesResponseType(typeof(ApiResponse<AiAdvisorConfigDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateConfig([FromBody] AiAdvisorConfigDto request, CancellationToken ct)
+    {
+        var updated = await aiAdvisorService.UpdateConfigurationAsync(request, ct);
+        return Ok(ApiResponse<AiAdvisorConfigDto>.Ok(updated, "AI Advisor configuration updated successfully"));
+    }
+
+    [HttpPost("config/reset")]
+    [ProducesResponseType(typeof(ApiResponse<AiAdvisorConfigDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResetConfig(CancellationToken ct)
+    {
+        var reset = await aiAdvisorService.ResetConfigurationAsync(ct);
+        return Ok(ApiResponse<AiAdvisorConfigDto>.Ok(reset, "AI Advisor configuration restored to appsettings.json defaults"));
+    }
 }
 
 public record AddWatchlistRequest(string Symbol);

@@ -94,6 +94,11 @@ public static class DependencyInjection
 
         services.AddDbContext<TradingDbContext>(options =>
         {
+            options.ConfigureWarnings(w => 
+            {
+                w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning);
+            });
+
             if (useInMemory || string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("InMemory"))
             {
                 options.UseInMemoryDatabase("TradingPlatform_Dev_InMemory");

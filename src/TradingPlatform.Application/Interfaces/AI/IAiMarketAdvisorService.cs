@@ -35,8 +35,23 @@ public record AiAnalysisResult(
     DateTime AnalyzedAtUtc
 );
 
+public class AiAdvisorConfigDto
+{
+    public string Provider { get; set; } = "GeminiPro"; // "GeminiPro", "OpenAI", "Claude", "BuiltInQuant"
+    public string? ApiKey { get; set; }
+    public bool HasApiKey { get; set; }
+    public string Model { get; set; } = "gemini-1.5-pro";
+    public decimal MinConfidenceThreshold { get; set; } = 0.80m;
+    public bool EnableDipAccumulation { get; set; } = true;
+    public bool EnableSpecialWatchlist { get; set; } = true;
+    public string ActiveSource { get; set; } = "AppSettings"; // "UI" or "AppSettings"
+}
+
 public interface IAiMarketAdvisorService
 {
     Task<AiAnalysisResult> AnalyzeStockAsync(AiAnalysisRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<AiAnalysisResult>> ScanHoldingsAndWatchlistAsync(Guid? accountId = null, CancellationToken ct = default);
+    Task<AiAdvisorConfigDto> GetConfigurationAsync(CancellationToken ct = default);
+    Task<AiAdvisorConfigDto> UpdateConfigurationAsync(AiAdvisorConfigDto updateDto, CancellationToken ct = default);
+    Task<AiAdvisorConfigDto> ResetConfigurationAsync(CancellationToken ct = default);
 }
