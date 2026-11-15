@@ -9,8 +9,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('trader1@example.com');
+  const [password, setPassword] = useState('Password123!');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -58,6 +58,24 @@ export const LoginPage: React.FC = () => {
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-slate-900/90 py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10 backdrop-blur-md">
+          {/* Quick Demo Credentials Pill */}
+          <div className="mb-5 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-sky-400">Pre-Configured Demo Account</p>
+              <p className="text-[11px] text-slate-400 font-mono">trader1@example.com / Password123!</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('trader1@example.com');
+                setPassword('Password123!');
+              }}
+              className="px-2.5 py-1 text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-white rounded-lg shadow transition"
+            >
+              Fill In
+            </button>
+          </div>
+
           {error && (
             <div className="mb-6 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-start gap-2.5">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
