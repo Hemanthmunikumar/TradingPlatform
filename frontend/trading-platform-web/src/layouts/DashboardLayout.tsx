@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   TrendingUp,
   Clock,
-  HelpCircle
+  HelpCircle,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationCenter } from '../components/NotificationCenter';
@@ -25,6 +26,7 @@ export const DashboardLayout: React.FC = () => {
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/ai-advisor', label: 'AI Co-Pilot', icon: Sparkles },
     { path: '/brokers', label: 'Brokers & Accounts', icon: Layers },
     { path: '/approvals', label: 'Pending Approvals', icon: Clock },
     { path: '/orders', label: 'Orders & Trades', icon: TrendingUp },

@@ -10,6 +10,7 @@ import { AccountSettingsPage } from './pages/AccountSettingsPage';
 import { ApprovalsPage } from './pages/ApprovalsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { HelpSupportPage } from './pages/HelpSupportPage';
+import { AiMarketExpertPage } from './pages/AiMarketExpertPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -51,6 +52,7 @@ export const App: React.FC = () => {
             }
           >
             <Route index element={<DashboardPage />} />
+            <Route path="ai-advisor" element={<AiMarketExpertPage />} />
             <Route path="brokers" element={<BrokersPage />} />
             <Route path="settings" element={<AccountSettingsPage />} />
             <Route path="approvals" element={<ApprovalsPage />} />

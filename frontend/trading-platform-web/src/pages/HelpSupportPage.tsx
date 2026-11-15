@@ -14,11 +14,13 @@ import {
   Cpu, 
   Terminal,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Sparkles,
+  PlayCircle
 } from 'lucide-react';
 
 export const HelpSupportPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'mock' | 'upstox' | 'zerodha' | 'docker' | 'safety'>('upstox');
+  const [activeTab, setActiveTab] = useState<'upstox' | 'zerodha' | 'mock' | 'ai' | 'docker' | 'safety'>('ai');
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   const redirectUrl = `${window.location.origin}/brokers/callback`;
@@ -60,11 +62,12 @@ export const HelpSupportPage: React.FC = () => {
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
         {[
-          { id: 'upstox', label: '1. Upstox API Guide', icon: Zap },
-          { id: 'zerodha', label: '2. Zerodha Kite Connect', icon: Key },
-          { id: 'mock', label: '3. Mock Simulator (Paper)', icon: Cpu },
-          { id: 'docker', label: '4. Docker & Database', icon: Server },
-          { id: 'safety', label: '5. Safety & 2s Buy Gate', icon: ShieldCheck },
+          { id: 'ai', label: '1. AI Co-Pilot & Trials', icon: Sparkles },
+          { id: 'upstox', label: '2. Upstox API Guide', icon: Zap },
+          { id: 'zerodha', label: '3. Zerodha Kite Connect', icon: Key },
+          { id: 'mock', label: '4. Mock Simulator (Paper)', icon: Cpu },
+          { id: 'docker', label: '5. Docker & Database', icon: Server },
+          { id: 'safety', label: '6. Safety & 2s Buy Gate', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -84,6 +87,103 @@ export const HelpSupportPage: React.FC = () => {
           );
         })}
       </div>
+
+      {/* TAB 0: AI CO-PILOT & TRIALS */}
+      {activeTab === 'ai' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  AI Market Expert Co-Pilot &amp; Mock Trials
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Live Engine
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Autonomous algorithmic equity analyst powered by configurable AI and quantitative models.
+                </p>
+              </div>
+
+              <Link
+                to="/ai-advisor"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-amber-500/20 transition self-start sm:self-auto"
+              >
+                <Sparkles size={14} />
+                Open AI Co-Pilot
+                <ArrowRight size={14} />
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Card 1: Existing Holdings Dip Accumulation */}
+            <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+                <Zap size={16} />
+                Holdings Dip Accumulation
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                The platform monitors your broker's portfolio holdings in real time. If fundamentally strong stocks pull back to oversold levels (RSI &lt; 38 or touching 50 EMA / VWAP intraday support), the AI raises a <strong>BUY THE DIP</strong> recommendation to average in at lower prices.
+              </p>
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-400 font-mono">
+                Trigger: RSI &lt; 38 + Holding P&amp;L down &gt; 1.5% + Daily Volume &gt; 1.2x Avg
+              </div>
+            </div>
+
+            {/* Card 2: Special Monitor Watchlist */}
+            <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2 text-sky-400 text-xs font-bold uppercase tracking-wider">
+                <Cpu size={16} />
+                Special Monitor Watchlist
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Have a stock in mind (e.g. <code>ZOMATO</code>, <code>BEL</code>, <code>TATASTEEL</code>) but unsure of the exact entry point? Add it to the <strong>Special Monitor Watchlist</strong> in the AI Co-Pilot. The engine tracks 3-timeframe trend momentum and only issues a BUY when market structure confirms.
+              </p>
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-400 font-mono">
+                Type ticker symbol (e.g. HAL) &rarr; Click Add Stock &rarr; Live AI tracking active
+              </div>
+            </div>
+
+            {/* Card 3: 1-Click Interactive Test Trial */}
+            <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <PlayCircle size={16} />
+                1-Click Mock Simulator Test Trial
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Want to see the entire trade lifecycle before trading real money? In the AI Co-Pilot page, click <strong>"⚡ Test 2s BUY Rejection Window"</strong>.
+              </p>
+              <ul className="list-disc list-inside text-xs text-slate-300 space-y-1 pl-1">
+                <li>Simulates an algorithmic BUY signal on mock stocks.</li>
+                <li>Pops up the real-time <strong>2-second countdown toast</strong>.</li>
+                <li>You can click <em>"Reject"</em> to cancel, or let it auto-execute into the mock portfolio!</li>
+              </ul>
+            </div>
+
+            {/* Card 4: Configurable AI Providers */}
+            <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
+              <div className="flex items-center gap-2 text-purple-400 text-xs font-bold uppercase tracking-wider">
+                <Terminal size={16} />
+                Configurable AI Providers
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Easily swap between Gemini Pro, Claude, OpenAI, or local models inside <code>appsettings.json</code>:
+              </p>
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-400 font-mono overflow-x-auto">
+                <pre>{`"AiAdvisor": {
+  "Provider": "GeminiPro", // or OpenAI, Claude, BuiltInQuant
+  "GeminiApiKey": "YOUR_API_KEY",
+  "Model": "gemini-1.5-pro"
+}`}</pre>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                * When no API key is set, the system uses its sub-millisecond C# quantitative expert engine automatically.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: UPSTOX */}
       {activeTab === 'upstox' && (

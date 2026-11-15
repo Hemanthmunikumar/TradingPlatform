@@ -146,7 +146,39 @@ docker compose up -d --build
 
 ---
 
-## 6. Frequently Asked Questions (FAQ)
+## 6. AI Market Expert Co-Pilot & Mock Simulator Trials
+
+The platform includes an autonomous algorithmic equity advisor powered by configurable AI and quantitative models.
+
+### Key Capabilities:
+1. **Holdings Dip Accumulation ("Buy the Dip")**:
+   - Ingests your broker's current portfolio holdings and tracks intraday pullbacks.
+   - When a quality stock tests a major moving average (e.g., 50 EMA, 200 EMA) or enters oversold territory (RSI < 38), the advisor recommends accumulating additional quantity.
+2. **Special Monitor Watchlist**:
+   - Add any Indian stock (e.g., `ZOMATO`, `BEL`, `TATASTEEL`) to a high-frequency tracking queue.
+   - The engine analyzes 3-timeframe trend alignment, VWAP support, and volume spikes before recommending entries.
+3. **Smart Profit Booking & Stop-Loss**:
+   - Generates alerts to lock in 50% profits (`BOOK_PROFIT_50`) when positions achieve swing targets or hit upper Bollinger bands.
+   - Issues `EXIT_STOP_LOSS` alerts when technical support structures break.
+4. **1-Click Interactive Test Trial**:
+   - In the **AI Co-Pilot** page (`http://localhost:5173/ai-advisor`), click **"⚡ Test 2s BUY Rejection Window"**.
+   - Triggers an algorithmic BUY signal, displays the real-time 2-second countdown toast, and automatically executes the trade into the paper portfolio if not rejected.
+
+### Pluggable AI Configuration (`appsettings.json`):
+```json
+"AiAdvisor": {
+  "Provider": "GeminiPro", // Options: "GeminiPro", "OpenAI", "Claude", "BuiltInQuant"
+  "GeminiApiKey": "",      // Paste Google Gemini API Key (or leave blank to use fast built-in C# quant engine)
+  "Model": "gemini-1.5-pro",
+  "EnableDipAccumulation": true,
+  "EnableSpecialWatchlist": true,
+  "DefaultConfidenceThreshold": 75
+}
+```
+
+---
+
+## 7. Frequently Asked Questions (FAQ)
 
 ### Q: Why do my secrets stay masked as `***`?
 **A:** Secrets are never sent to or displayed in the frontend in plaintext. They are encrypted using authenticated AES-256-GCM before database write and decrypted only in backend memory when communicating directly with broker endpoints.

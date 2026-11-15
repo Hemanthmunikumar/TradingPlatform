@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.Adapters;
+using TradingPlatform.Application.Interfaces.AI;
 using TradingPlatform.Application.Interfaces.Analytics;
 using TradingPlatform.Application.Interfaces.Approvals;
 using TradingPlatform.Application.Interfaces.MarketData;
@@ -15,6 +16,7 @@ using TradingPlatform.Infrastructure.Adapters;
 using TradingPlatform.Infrastructure.Adapters.Mock;
 using TradingPlatform.Infrastructure.Adapters.Upstox;
 using TradingPlatform.Infrastructure.Adapters.Zerodha;
+using TradingPlatform.Infrastructure.AI;
 using TradingPlatform.Infrastructure.Analytics;
 using TradingPlatform.Infrastructure.Approvals;
 using TradingPlatform.Infrastructure.MarketData;
@@ -47,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IIndicatorService, IndicatorService>();
         services.AddScoped<IStrategyEngine, StrategyEngine>();
         services.AddScoped<IBacktestingService, BacktestingService>();
+        services.AddHttpClient<IAiMarketAdvisorService, ConfigurableAiMarketAdvisorService>();
 
         // Pre-Order Risk Validation & Safety Engine
         services.AddScoped<IRiskValidationService, RiskValidationService>();
