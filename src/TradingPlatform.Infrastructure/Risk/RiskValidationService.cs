@@ -210,11 +210,12 @@ public class RiskValidationService(
         }
 
         // 19. Duplicate Order Detection (same symbol, side, account within 5s window)
+        var duplicateCutoff = DateTime.UtcNow.Subtract(DuplicateWindow);
         var recentDuplicate = await dbContext.TradingOrders
             .AsNoTracking()
             .Where(o => o.TradingAccountId == account.Id &&
                         o.InstrumentId == request.InstrumentId &&
-                        o.CreatedAtUtc >= DateTime.UtcNow.Subtract(DuplicateWindow))
+                        o.CreatedAtUtc >= duplicateCutoff)
             .AnyAsync(ct);
 
         if (recentDuplicate)
