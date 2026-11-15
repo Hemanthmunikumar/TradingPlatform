@@ -58,6 +58,7 @@ export const AiMarketExpertPage: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simMessage, setSimMessage] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string>('ALL');
+  const [approvalDurationSeconds, setApprovalDurationSeconds] = useState<number>(2);
 
   // AI Configuration State
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -132,9 +133,10 @@ export const AiMarketExpertPage: React.FC = () => {
     setIsLoading(true);
     setSimMessage(null);
     try {
-      const [overviewRes, watchlistRes] = await Promise.all([
+      const [overviewRes, watchlistRes, accountsRes] = await Promise.all([
         apiClient.get<ApiResponse<AiAnalysisResultDto[]>>('/ai/overview'),
         apiClient.get<ApiResponse<string[]>>('/ai/special-monitor'),
+        apiClient.get<ApiResponse<any[]>>('/trading-accounts'),
       ]);
 
       if (overviewRes.data.success && overviewRes.data.data) {
@@ -142,6 +144,12 @@ export const AiMarketExpertPage: React.FC = () => {
       }
       if (watchlistRes.data.success && watchlistRes.data.data) {
         setWatchlist(watchlistRes.data.data);
+      }
+      if (accountsRes.data.success && accountsRes.data.data) {
+        const active = accountsRes.data.data.find((a: any) => a.isActive) || accountsRes.data.data[0];
+        if (active?.configuration?.approvalDurationSeconds) {
+          setApprovalDurationSeconds(active.configuration.approvalDurationSeconds);
+        }
       }
     } catch (err: any) {
       console.error('Failed to load AI market analysis', err);
@@ -190,7 +198,7 @@ export const AiMarketExpertPage: React.FC = () => {
         quantity: 10,
       });
       if (res.data.success) {
-        setSimMessage(`⚡ 2-Second BUY Window Triggered for 10 shares of ${symbol} @ ₹${res.data.data?.indicativePrice}! Watch the persistent countdown toast.`);
+        setSimMessage(`⚡ ${approvalDurationSeconds}s BUY Window Triggered for 10 shares of ${symbol} @ ₹${res.data.data?.indicativePrice}! Watch the persistent countdown toast.`);
       }
     } catch (err: any) {
       setSimMessage(`Simulation failed: ${err.response?.data?.message || err.message}`);
@@ -284,10 +292,10 @@ export const AiMarketExpertPage: React.FC = () => {
             onClick={() => handleSimulateBuy('INFY')}
             disabled={isSimulating}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 transition active:scale-95"
-            title="Triggers instant 2-second BUY rejection window countdown"
+            title={`Triggers instant ${approvalDurationSeconds}-second BUY rejection window countdown`}
           >
             <Zap size={15} className={isSimulating ? 'animate-spin' : ''} />
-            ⚡ Test 2s BUY Rejection Window
+            ⚡ Test {approvalDurationSeconds}s BUY Rejection Window
           </button>
         </div>
       </div>
@@ -541,7 +549,7 @@ export const AiMarketExpertPage: React.FC = () => {
             <ShieldCheck size={15} className="text-sky-400" />
           </div>
           <p className="text-2xl font-extrabold text-sky-400">19-Point Guard</p>
-          <p className="text-[11px] text-slate-500">2s Rejection Window active</p>
+          <p className="text-[11px] text-slate-500">{approvalDurationSeconds}s Rejection Window active</p>
         </div>
       </div>
 
@@ -694,7 +702,7 @@ export const AiMarketExpertPage: React.FC = () => {
                 <div className="pt-2 flex items-center justify-between border-t border-slate-800/60">
                   <span className="text-[11px] text-slate-500 flex items-center gap-1">
                     <Clock size={12} />
-                    Will activate 2-second BUY rejection window upon trigger
+                    Will activate {approvalDurationSeconds}-second BUY rejection window upon trigger
                   </span>
                   <button
                     onClick={() => handleSimulateBuy(item.symbol)}

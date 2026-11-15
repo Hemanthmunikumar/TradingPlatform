@@ -160,6 +160,10 @@ public class AiAdvisorController(
         decimal stopLoss = Math.Round(price * 0.98m, 2);
         decimal target = Math.Round(price * 1.04m, 2);
 
+        int durationSeconds = account.Configuration?.ApprovalDurationSeconds is > 0
+            ? account.Configuration.ApprovalDurationSeconds
+            : 2;
+
         var approvalRequest = new CreateTradeApprovalRequest(
             TradingAccountId: account.Id,
             InstrumentId: inst.Id,
@@ -173,15 +177,15 @@ public class AiAdvisorController(
             Target: target,
             RiskAmount: Math.Round((price - stopLoss) * quantity, 2),
             Reason: $"AI Gemini Pro High Conviction BUY setup: Bullish bounce at 50 EMA with oversold RSI recovery.",
-            ApprovalDurationSeconds: 2
+            ApprovalDurationSeconds: durationSeconds
         );
 
         var approval = await tradeApprovalService.CreateApprovalAsync(approvalRequest, ct);
 
-        logger.LogInformation("Simulation: Triggered 2-second BUY approval window for {Quantity} {Symbol} @ ₹{Price}",
-            quantity, symbol, price);
+        logger.LogInformation("Simulation: Triggered {Duration}s BUY approval window for {Quantity} {Symbol} @ ₹{Price}",
+            durationSeconds, quantity, symbol, price);
 
-        return Ok(ApiResponse<PendingTradeApprovalDto>.Ok(approval, "2-Second BUY approval window triggered. Observe live countdown toast in UI."));
+        return Ok(ApiResponse<PendingTradeApprovalDto>.Ok(approval, $"{durationSeconds}-Second BUY approval window triggered. Observe live countdown toast in UI."));
     }
 
     [HttpGet("config")]

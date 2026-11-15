@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
+import { apiClient } from '../api/client';
+import type { ApiResponse, TradingAccountDto } from '../types';
 
 interface MockApproval {
   id: string;
@@ -19,7 +21,26 @@ interface MockApproval {
 export const ApprovalsPage: React.FC = () => {
   const [approvals, setApprovals] = useState<MockApproval[]>([]);
   const [demoActive, setDemoActive] = useState(false);
+  const [configuredDuration, setConfiguredDuration] = useState<number>(2);
   const [remainingTime, setRemainingTime] = useState(2.0);
+
+  useEffect(() => {
+    const fetchDuration = async () => {
+      try {
+        const res = await apiClient.get<ApiResponse<TradingAccountDto[]>>('/trading-accounts');
+        if (res.data.success && res.data.data) {
+          const active = res.data.data.find(a => a.isActive) || res.data.data[0];
+          if (active?.configuration?.approvalDurationSeconds) {
+            setConfiguredDuration(active.configuration.approvalDurationSeconds);
+            setRemainingTime(active.configuration.approvalDurationSeconds);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load approval duration', err);
+      }
+    };
+    fetchDuration();
+  }, []);
 
   const triggerMockBuySignal = () => {
     const id = Math.random().toString(36).substring(7);
@@ -34,13 +55,13 @@ export const ApprovalsPage: React.FC = () => {
       quantity: 50,
       price: 1850.25,
       orderValue: 92512.50,
-      deadlineSeconds: 2.0,
+      deadlineSeconds: configuredDuration,
       status: 'Pending',
     };
 
     setApprovals([mock, ...approvals]);
     setDemoActive(true);
-    setRemainingTime(2.0);
+    setRemainingTime(configuredDuration);
 
     const interval = setInterval(() => {
       setRemainingTime((prev) => {
@@ -81,7 +102,7 @@ export const ApprovalsPage: React.FC = () => {
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-amber-500/20 transition"
         >
           <Clock size={16} />
-          Simulate 2s BUY Signal Alert
+          Simulate {configuredDuration}s BUY Signal Alert
         </button>
       </div>
 
@@ -116,7 +137,7 @@ export const ApprovalsPage: React.FC = () => {
           <div className="mt-3 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
             <div
               className="h-full bg-amber-400 transition-all duration-100 ease-linear"
-              style={{ width: `${(remainingTime / 2.0) * 100}%` }}
+              style={{ width: `${(remainingTime / configuredDuration) * 100}%` }}
             />
           </div>
         </div>

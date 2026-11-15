@@ -51,6 +51,8 @@ export const DashboardPage: React.FC = () => {
   const totalAvailable = accounts.reduce((acc, a) => acc + (a.availableFunds || 0), 0);
   const activeAccountsCount = accounts.filter((a) => a.isActive).length;
   const liveAccountsCount = accounts.filter((a) => a.tradingMode === 'Live').length;
+  const activeAccount = accounts.find((a) => a.isActive) || accounts[0];
+  const rejectionWindowSeconds = activeAccount?.configuration?.approvalDurationSeconds || 2;
 
   const formatINR = (val: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -186,13 +188,13 @@ export const DashboardPage: React.FC = () => {
           </div>
           <div>
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              Fast-Action 2-Second BUY Rejection Window
+              Fast-Action {rejectionWindowSeconds}-Second BUY Rejection Window
               <span className="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
-                Active Policy
+                Active Policy ({rejectionWindowSeconds}s)
               </span>
             </h4>
             <p className="text-xs text-slate-300 mt-0.5">
-              BUY signals trigger persistent instant toasts with interactive reject countdown. Zero pending signals right now.
+              BUY signals trigger persistent instant toasts with interactive {rejectionWindowSeconds}s reject countdown. Zero pending signals right now.
             </p>
           </div>
         </div>
