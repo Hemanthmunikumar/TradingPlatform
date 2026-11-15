@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Clock } from 'lucide-react';
 import { apiClient } from '../api/client';
 import type { ApiResponse, TradingAccountDto } from '../types';
@@ -23,6 +23,7 @@ export const ApprovalsPage: React.FC = () => {
   const [demoActive, setDemoActive] = useState(false);
   const [configuredDuration, setConfiguredDuration] = useState<number>(2);
   const [remainingTime, setRemainingTime] = useState(2.0);
+  const timerRef = useRef<any>(null);
 
   useEffect(() => {
     const fetchDuration = async () => {
@@ -40,9 +41,19 @@ export const ApprovalsPage: React.FC = () => {
       }
     };
     fetchDuration();
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   const triggerMockBuySignal = () => {
+    // Clear any existing active timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
     const id = Math.random().toString(36).substring(7);
     const mock: MockApproval = {
       id,
@@ -59,17 +70,21 @@ export const ApprovalsPage: React.FC = () => {
       status: 'Pending',
     };
 
-    setApprovals([mock, ...approvals]);
+    setApprovals((prev) => [mock, ...prev]);
     setDemoActive(true);
     setRemainingTime(configuredDuration);
 
-    const interval = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setRemainingTime((prev) => {
         if (prev <= 0.1) {
-          clearInterval(interval);
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
           setDemoActive(false);
+          // Only execute if still in Pending state (never overwrite Rejected status)
           setApprovals((current) =>
-            current.map((a) => (a.id === id ? { ...a, status: 'Executed' } : a))
+            current.map((a) => (a.id === id && a.status === 'Pending' ? { ...a, status: 'Executed' } : a))
           );
           return 0;
         }
@@ -78,11 +93,27 @@ export const ApprovalsPage: React.FC = () => {
     }, 100);
   };
 
-  const handleReject = (id: string) => {
+  const handleReject = async (id: string) => {
+    // 1. Immediately cancel the countdown interval
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     setDemoActive(false);
+
+    // 2. Permanently update status to Rejected
     setApprovals((current) =>
       current.map((a) => (a.id === id ? { ...a, status: 'Rejected' } : a))
     );
+
+    // 3. If real GUID approval from backend, dispatch to backend
+    if (id && id.length > 20) {
+      try {
+        await apiClient.post(`/trade-approvals/${id}/reject`, { reason: 'User rejected manually' });
+      } catch (err) {
+        console.error('Failed to notify backend of rejection', err);
+      }
+    }
   };
 
   return (
