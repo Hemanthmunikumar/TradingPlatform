@@ -449,8 +449,8 @@ export const BrokersPage: React.FC = () => {
                 </label>
                 <input
                   type="number"
-                  min={1000}
-                  step={1000}
+                  min={0}
+                  step="any"
                   value={initialCapital}
                   onChange={(e) => setInitialCapital(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"

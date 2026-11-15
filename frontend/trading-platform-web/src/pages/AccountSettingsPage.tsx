@@ -253,8 +253,8 @@ export const AccountSettingsPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min={1000}
-                step={1000}
+                min={0}
+                step="any"
                 value={config.maxCapitalAllocation}
                 onChange={(e) => setConfig({ ...config, maxCapitalAllocation: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
@@ -267,8 +267,8 @@ export const AccountSettingsPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min={500}
-                step={1000}
+                min={0}
+                step="any"
                 value={config.maxOrderValue}
                 onChange={(e) => setConfig({ ...config, maxOrderValue: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
@@ -281,8 +281,8 @@ export const AccountSettingsPage: React.FC = () => {
               </label>
               <input
                 type="number"
-                min={500}
-                step={500}
+                min={0}
+                step="any"
                 value={config.dailyLossLimit}
                 onChange={(e) => setConfig({ ...config, dailyLossLimit: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
@@ -297,6 +297,7 @@ export const AccountSettingsPage: React.FC = () => {
                 type="number"
                 min={1}
                 max={50}
+                step={1}
                 value={config.maxPositions}
                 onChange={(e) => setConfig({ ...config, maxPositions: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
@@ -310,8 +311,8 @@ export const AccountSettingsPage: React.FC = () => {
               <input
                 type="number"
                 min={0.1}
-                max={10.0}
-                step={0.1}
+                max={100.0}
+                step="any"
                 value={config.maxRiskPerTradePercent}
                 onChange={(e) => setConfig({ ...config, maxRiskPerTradePercent: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
@@ -326,7 +327,7 @@ export const AccountSettingsPage: React.FC = () => {
                 type="number"
                 min={1.0}
                 max={100.0}
-                step={1.0}
+                step="any"
                 value={config.maxExposurePerStockPercent}
                 onChange={(e) => setConfig({ ...config, maxExposurePerStockPercent: Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
