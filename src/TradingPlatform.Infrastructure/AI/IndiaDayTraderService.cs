@@ -262,7 +262,7 @@ public class IndiaDayTraderService(
     {
         var psi = new ProcessStartInfo
         {
-            FileName = "python",
+            FileName = OperatingSystem.IsWindows() ? "python" : "python3",
             Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

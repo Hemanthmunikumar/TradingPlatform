@@ -1,5 +1,5 @@
-# Multi-stage Dockerfile for TradingPlatform.API (.NET 10 LTS)
-FROM mcr.microsoft.com/dotnet/sdk:10.0-preview AS build
+# Multi-stage Dockerfile for TradingPlatform.API (.NET 10 LTS - Multi-Arch AMD64 & ARM64)
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /app
 
 # Copy solution and project files first for optimal layer caching
@@ -23,11 +23,17 @@ WORKDIR /app/src/TradingPlatform.API
 RUN dotnet publish -c Release -o /app/publish --no-restore
 
 # Runtime Image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
-COPY --from=build /app/publish .
 
-# Standard non-root user and ports
+# Install Python 3 (for india-day-trader-skill scanners) and curl (for container healthcheck)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /app/publish .
+COPY src/india-day-trader-skill/ ./src/india-day-trader-skill/
+
 ENV ASPNETCORE_URLS=http://+:5000
 ENV ASPNETCORE_ENVIRONMENT=Production
 EXPOSE 5000
