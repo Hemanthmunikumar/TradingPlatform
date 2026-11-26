@@ -15,6 +15,19 @@ public class AccountConfigurationConfiguration : IEntityTypeConfiguration<Accoun
         builder.Property(ac => ac.MaxRiskPerTradePercent).HasPrecision(5, 2);
         builder.Property(ac => ac.DailyLossLimit).HasPrecision(18, 4);
         builder.Property(ac => ac.MaxExposurePerStockPercent).HasPrecision(5, 2);
+
+        builder.Property(ac => ac.AllowedTradingSegment).HasMaxLength(32).HasDefaultValue("Both");
+        builder.Property(ac => ac.IntradayStopLossPercent).HasPrecision(5, 2);
+        builder.Property(ac => ac.IntradayTargetPercent).HasPrecision(5, 2);
+        builder.Property(ac => ac.IntradayMaxCapitalAllocation).HasPrecision(18, 4);
+        builder.Property(ac => ac.IntradayMaxOrderValue).HasPrecision(18, 4);
+        builder.Property(ac => ac.IntradayDailyLossLimit).HasPrecision(18, 4);
+
+        builder.Property(ac => ac.DeliveryStopLossPercent).HasPrecision(5, 2);
+        builder.Property(ac => ac.DeliveryTargetPercent).HasPrecision(5, 2);
+        builder.Property(ac => ac.DeliveryMaxCapitalAllocation).HasPrecision(18, 4);
+        builder.Property(ac => ac.DeliveryMaxOrderValue).HasPrecision(18, 4);
+        builder.Property(ac => ac.DeliveryDailyLossLimit).HasPrecision(18, 4);
     }
 }
 

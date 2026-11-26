@@ -15,7 +15,8 @@ public record CreateBrokerConnectionRequest(
     string DisplayName,
     string ApiKey,
     string ApiSecret,
-    TradingMode TradingMode = TradingMode.Paper
+    TradingMode TradingMode = TradingMode.Paper,
+    decimal InitialCapital = 500_000m
 );
 
 public record BrokerConnectionDto(
@@ -45,6 +46,11 @@ public record AuthUrlResponse(
 public record ExchangeTokenRequest(
     string AuthorizationCode,
     string RedirectUri
+);
+
+public record SetManualTokenRequest(
+    string AccessToken,
+    DateTime? ExpiresAtUtc = null
 );
 
 public record ToggleTradingModeRequest(
@@ -79,7 +85,22 @@ public record AccountConfigurationDto(
     bool KillSwitchActive,
     TimeOnly TradingScheduleStart,
     TimeOnly TradingScheduleEnd,
-    TimeOnly IntradaySquareOffTime
+    TimeOnly IntradaySquareOffTime,
+    string AllowedTradingSegment = "Both",
+    int IntradayMinVolume = 30000,
+    decimal IntradayStopLossPercent = 2.0m,
+    decimal IntradayTargetPercent = 5.0m,
+    decimal IntradayMaxCapitalAllocation = 500000m,
+    decimal IntradayMaxOrderValue = 50000m,
+    decimal IntradayDailyLossLimit = 10000m,
+    int IntradayMaxPositions = 5,
+    int DeliveryMinVolume = 50000,
+    decimal DeliveryStopLossPercent = 4.0m,
+    decimal DeliveryTargetPercent = 10.0m,
+    decimal DeliveryMaxCapitalAllocation = 500000m,
+    decimal DeliveryMaxOrderValue = 100000m,
+    decimal DeliveryDailyLossLimit = 20000m,
+    int DeliveryMaxPositions = 10
 );
 
 public record UpdateAccountConfigurationRequest(
@@ -93,5 +114,20 @@ public record UpdateAccountConfigurationRequest(
     bool StopLossRequired,
     int ApprovalDurationSeconds,
     bool AutoExecuteOnTimeout,
-    bool KillSwitchActive
+    bool KillSwitchActive,
+    string? AllowedTradingSegment = null,
+    int? IntradayMinVolume = null,
+    decimal? IntradayStopLossPercent = null,
+    decimal? IntradayTargetPercent = null,
+    decimal? IntradayMaxCapitalAllocation = null,
+    decimal? IntradayMaxOrderValue = null,
+    decimal? IntradayDailyLossLimit = null,
+    int? IntradayMaxPositions = null,
+    int? DeliveryMinVolume = null,
+    decimal? DeliveryStopLossPercent = null,
+    decimal? DeliveryTargetPercent = null,
+    decimal? DeliveryMaxCapitalAllocation = null,
+    decimal? DeliveryMaxOrderValue = null,
+    decimal? DeliveryDailyLossLimit = null,
+    int? DeliveryMaxPositions = null
 );

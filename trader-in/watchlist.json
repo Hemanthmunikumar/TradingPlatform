@@ -1,0 +1,43 @@
+{
+  "created_by": "india-scanner",
+  "created_at": "2026-11-17T03:05:00Z",
+  "mode": "daily",
+  "as_of": "2026-11-16 close",
+  "universe": 2,
+  "scanned": 2,
+  "failed": 0,
+  "source": "yahoo",
+  "currency": "INR",
+  "filters": {
+    "min_price": 20.0,
+    "min_volume": 0,
+    "min_turnover": 50000000.0
+  },
+  "note": "A scan is a list of charts that match a rule, not a list of stocks to buy.",
+  "hits": [
+    {
+      "symbol": "RELIANCE",
+      "exchange": "NSE",
+      "setups": [
+        "breakout_20d",
+        "bull_flag"
+      ],
+      "price": 1344.8,
+      "close_date": "2026-11-16",
+      "rsi": 71.6,
+      "volume": 7653026,
+      "series": "EQ",
+      "intraday": true,
+      "band": null,
+      "prev_close": 1339.7,
+      "upper_circuit": null,
+      "lower_circuit": null,
+      "near_upper_circuit": false,
+      "cas": true,
+      "session_close": "15:15",
+      "square_off": "15:12",
+      "flat_by_default": "15:00",
+      "no_entries_after_default": "14:45"
+    }
+  ]
+}

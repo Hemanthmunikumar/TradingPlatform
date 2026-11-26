@@ -11,7 +11,10 @@ import {
   CheckCircle2, 
   RefreshCw,
   X,
-  HelpCircle
+  HelpCircle,
+  Zap,
+  Trash2,
+  ArrowRightLeft
 } from 'lucide-react';
 import { apiClient } from '../api/client';
 import type { 
@@ -26,8 +29,9 @@ export const BrokersPage: React.FC = () => {
   const [connections, setConnections] = useState<BrokerConnectionDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  // Modal State
+  // New Connection Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState('');
@@ -37,7 +41,11 @@ export const BrokersPage: React.FC = () => {
   const [tradingMode, setTradingMode] = useState<TradingMode>('Paper');
   const [initialCapital, setInitialCapital] = useState(500000);
 
-  const selectedProvider = providers.find((p) => p.id === selectedProviderId);
+  // Manual Token Modal State
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [tokenConnectionId, setTokenConnectionId] = useState('');
+  const [manualAccessToken, setManualAccessToken] = useState('');
+  const [isSubmittingToken, setIsSubmittingToken] = useState(false);
 
   const handleSelectProvider = (providerId: string) => {
     setSelectedProviderId(providerId);
@@ -105,6 +113,7 @@ export const BrokersPage: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
+    setSuccessMsg(null);
 
     try {
       const res = await apiClient.post<ApiResponse<BrokerConnectionDto>>('/brokers/connections', {
@@ -121,6 +130,11 @@ export const BrokersPage: React.FC = () => {
         setDisplayName('');
         setApiKey('');
         setApiSecret('');
+        setSuccessMsg(
+          tradingMode === 'Paper'
+            ? 'Paper trading broker connection established and Engine Ready!'
+            : 'Broker connection added. Please authorize via OAuth or manual token.'
+        );
         await fetchData();
       } else {
         setError(res.data.message || 'Failed to establish connection.');
@@ -137,17 +151,121 @@ export const BrokersPage: React.FC = () => {
   };
 
   const handleOAuthLogin = async (connectionId: string) => {
+    setError(null);
     try {
       const redirectUri = window.location.origin + '/brokers/callback';
-      const res = await apiClient.post<ApiResponse<{ authUrl: string }>>(
+      localStorage.setItem('tp_pending_oauth_connection_id', connectionId);
+      const res = await apiClient.post<ApiResponse<{ authorizationUrl?: string; authUrl?: string }>>(
         `/brokers/connections/${connectionId}/auth-url`,
         { redirectUri }
       );
-      if (res.data.success && res.data.data?.authUrl) {
-        window.location.href = res.data.data.authUrl;
+      const authUrl = res.data.data?.authorizationUrl || (res.data.data as any)?.authUrl;
+      if (res.data.success && authUrl) {
+        window.location.href = authUrl;
+      } else {
+        setError(res.data.message || 'Broker authorization URL could not be generated.');
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to generate OAuth redirect URL.');
+      setError(
+        err.response?.data?.message ||
+        'Failed to generate OAuth redirect URL. If testing in paper mode, you can click "Activate Paper Engine" instead.'
+      );
+    }
+  };
+
+  const handleActivatePaper = async (connectionId: string) => {
+    setIsLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await apiClient.post<ApiResponse<BrokerConnectionDto>>(
+        `/brokers/connections/${connectionId}/activate-paper`
+      );
+      if (res.data.success) {
+        setSuccessMsg('Paper trading activated successfully! Engine is now Ready.');
+        await fetchData();
+      } else {
+        setError(res.data.message || 'Failed to activate paper trading engine.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to activate paper trading.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteConnection = async (connectionId: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to remove broker connection "${name}"?`)) return;
+    setError(null);
+    try {
+      await apiClient.delete(`/brokers/connections/${connectionId}`);
+      setSuccessMsg(`Broker connection "${name}" removed.`);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to remove connection.');
+    }
+  };
+
+  const handleToggleConnectionMode = async (connectionId: string, currentMode: 'Paper' | 'Live') => {
+    const newMode = currentMode === 'Paper' ? 'Live' : 'Paper';
+    if (newMode === 'Live') {
+      const confirmed = window.confirm(
+        '⚠️ SWITCH BROKER TO LIVE TRADING?\n\n' +
+        'Real capital will be at stake. When buy/sell signals are approved, real orders will be placed on Zerodha Kite.\n\n' +
+        'Are you sure you want to switch to Live mode?'
+      );
+      if (!confirmed) return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await apiClient.post<ApiResponse<BrokerConnectionDto>>(
+        `/brokers/connections/${connectionId}/toggle-mode`,
+        { tradingMode: newMode }
+      );
+      if (res.data.success) {
+        setSuccessMsg(`Switched broker connection to ${newMode} Trading mode!`);
+        await fetchData();
+      } else {
+        setError(res.data.message || 'Failed to switch trading mode.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to switch trading mode.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openTokenModal = (connectionId: string) => {
+    setTokenConnectionId(connectionId);
+    setManualAccessToken('');
+    setIsTokenModalOpen(true);
+  };
+
+  const handleApplyManualToken = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualAccessToken.trim()) return;
+    setIsSubmittingToken(true);
+    setError(null);
+    try {
+      const res = await apiClient.post<ApiResponse<BrokerConnectionDto>>(
+        `/brokers/connections/${tokenConnectionId}/manual-token`,
+        { accessToken: manualAccessToken.trim() }
+      );
+      if (res.data.success) {
+        setIsTokenModalOpen(false);
+        setManualAccessToken('');
+        setSuccessMsg('Access token saved successfully! Engine is now Ready.');
+        await fetchData();
+      } else {
+        setError(res.data.message || 'Failed to apply access token.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to apply manual token.');
+    } finally {
+      setIsSubmittingToken(false);
     }
   };
 
@@ -188,7 +306,7 @@ export const BrokersPage: React.FC = () => {
         <div className="flex items-center gap-2.5 text-sky-300">
           <HelpCircle size={18} className="shrink-0 text-sky-400" />
           <span>
-            Need help finding your <strong>API Key</strong>, <strong>API Secret</strong>, or <strong>Redirect URL</strong>? Follow our step-by-step walkthrough.
+            Need help finding your <strong>API Key</strong>, <strong>API Secret</strong>, or setting up <strong>OAuth</strong>? Follow our step-by-step walkthrough.
           </span>
         </div>
         <Link
@@ -200,9 +318,26 @@ export const BrokersPage: React.FC = () => {
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-start gap-2.5">
-          <AlertCircle size={18} className="shrink-0 mt-0.5" />
-          <span>{error}</span>
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-start justify-between gap-2.5">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={18} className="shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+          <button onClick={() => setError(null)} className="text-rose-400 hover:text-rose-200">
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm flex items-start justify-between gap-2.5">
+          <div className="flex items-start gap-2.5">
+            <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+            <span>{successMsg}</span>
+          </div>
+          <button onClick={() => setSuccessMsg(null)} className="text-emerald-400 hover:text-emerald-200">
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -213,21 +348,38 @@ export const BrokersPage: React.FC = () => {
             key={conn.id}
             className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden"
           >
-            {/* Top decorative badge */}
+            {/* Top decorative badge & Actions */}
             <div className="flex items-center justify-between">
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                {conn.providerCode}
-              </span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1 ${
-                  conn.tradingMode === 'Paper'
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${conn.tradingMode === 'Paper' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-                {conn.tradingMode} Trading
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  {conn.providerCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => conn.providerCode !== 'Mock' && handleToggleConnectionMode(conn.id, conn.tradingMode)}
+                  disabled={conn.providerCode === 'Mock'}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 transition ${
+                    conn.tradingMode === 'Paper'
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20'
+                  } ${conn.providerCode !== 'Mock' ? 'cursor-pointer' : 'cursor-default'}`}
+                  title={conn.providerCode !== 'Mock' ? "Click to switch between Paper and Live mode" : "Mock Engine is always Paper"}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${conn.tradingMode === 'Paper' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                  {conn.tradingMode} Trading
+                  {conn.providerCode !== 'Mock' && <ArrowRightLeft size={11} className="opacity-70 ml-0.5" />}
+                </button>
+              </div>
+
+              {conn.providerCode !== 'Mock' && (
+                <button
+                  onClick={() => handleDeleteConnection(conn.id, conn.displayName)}
+                  title="Remove broker connection"
+                  className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                >
+                  <Trash2 size={15} />
+                </button>
+              )}
             </div>
 
             <div className="mt-4">
@@ -257,21 +409,56 @@ export const BrokersPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-2">
+            <div className="mt-5 pt-4 border-t border-slate-800/80">
               {!conn.isAuthenticated && conn.providerCode !== 'Mock' ? (
-                <button
-                  onClick={() => handleOAuthLogin(conn.id)}
-                  className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                >
-                  <ExternalLink size={14} />
-                  Authorize via Broker OAuth
-                </button>
+                <div className="space-y-2">
+                  {conn.tradingMode === 'Paper' && (
+                    <button
+                      onClick={() => handleActivatePaper(conn.id)}
+                      className="w-full py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-sm shadow-emerald-500/20 transition"
+                    >
+                      <Zap size={14} />
+                      Activate Paper Engine (1-Click Ready)
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleOAuthLogin(conn.id)}
+                    className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <ExternalLink size={14} />
+                    Authorize via Broker OAuth
+                  </button>
+                  <button
+                    onClick={() => openTokenModal(conn.id)}
+                    className="w-full py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium flex items-center justify-center gap-1.5 transition border border-slate-700"
+                  >
+                    <Key size={13} />
+                    Paste Access Token Manually
+                  </button>
+                </div>
               ) : (
-                <div className="w-full flex items-center justify-between text-xs text-slate-400">
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={14} /> Engine Ready
-                  </span>
-                  <span className="text-slate-500">ID: {conn.id.slice(0, 8)}...</span>
+                <div className="space-y-2.5">
+                  <div className="w-full flex items-center justify-between text-xs text-slate-400">
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 size={14} /> Engine Ready
+                    </span>
+                    <span className="text-slate-500">ID: {conn.id.slice(0, 8)}...</span>
+                  </div>
+
+                  {conn.providerCode !== 'Mock' && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleConnectionMode(conn.id, conn.tradingMode)}
+                      className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm ${
+                        conn.tradingMode === 'Paper'
+                          ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-rose-600/20'
+                          : 'bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                      }`}
+                    >
+                      <ArrowRightLeft size={13} />
+                      {conn.tradingMode === 'Paper' ? 'Switch to Live Trading Mode' : 'Switch to Paper Trading Mode'}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -319,107 +506,73 @@ export const BrokersPage: React.FC = () => {
                 <select
                   value={selectedProviderId}
                   onChange={(e) => handleSelectProvider(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 >
-                  {providers.length === 0 ? (
-                    <option value="">Loading providers from server...</option>
-                  ) : (
-                    providers.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.code})
-                      </option>
-                    ))
-                  )}
+                  {providers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.code})
+                    </option>
+                  ))}
                 </select>
-
-                {selectedProvider && (
-                  <div className="mt-2 p-2.5 rounded-lg bg-sky-950/40 border border-sky-800/40 text-xs text-sky-300 leading-relaxed">
-                    {selectedProvider.code === 'Mock' && (
-                      <span>
-                        ⚡ <strong>Mock Simulator:</strong> Built-in zero-latency paper engine. Pre-filled with sandbox credentials for instant testing without needing real API keys.
-                      </span>
-                    )}
-                    {selectedProvider.code === 'Upstox' && (
-                      <span>
-                        🌐 <strong>Upstox API:</strong> Enter your App Key &amp; Secret from the{' '}
-                        <a href="https://developer.upstox.com" target="_blank" rel="noreferrer" className="underline font-bold text-sky-200">
-                          Upstox Developer Portal
-                        </a>
-                        . After saving, click "Log In / Authorize" to complete 1-click OAuth.
-                      </span>
-                    )}
-                    {selectedProvider.code === 'Zerodha' && (
-                      <span>
-                        📈 <strong>Zerodha Kite:</strong> Enter your API Key &amp; Secret from the{' '}
-                        <a href="https://developers.kite.trade" target="_blank" rel="noreferrer" className="underline font-bold text-sky-200">
-                          Kite Connect Console
-                        </a>
-                        . After saving, click "Log In / Authorize" to generate daily token.
-                      </span>
-                    )}
-                  </div>
-                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                  Connection Display Name
+                  Display Name
                 </label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Upstox Intraday Primary"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  placeholder="e.g. Zerodha Primary"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                  Trading Mode
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTradingMode('Paper')}
-                    className={`py-2 text-xs font-bold rounded-lg border transition ${
-                      tradingMode === 'Paper'
-                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400'
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
-                    }`}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                    Trading Mode
+                  </label>
+                  <select
+                    value={tradingMode}
+                    onChange={(e) => setTradingMode(e.target.value as TradingMode)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
-                    Paper Trading (Safe)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTradingMode('Live')}
-                    className={`py-2 text-xs font-bold rounded-lg border transition ${
-                      tradingMode === 'Live'
-                        ? 'bg-rose-500/20 border-rose-500 text-rose-400'
-                        : 'bg-slate-950 border-slate-800 text-slate-400'
-                    }`}
-                  >
-                    Live Trading
-                  </button>
+                    <option value="Paper">Paper Trading (Safe)</option>
+                    <option value="Live">Live Trading (Real Capital)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                    Initial Capital (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min={0}
+                    value={initialCapital}
+                    onChange={(e) => setInitialCapital(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                  API Key / App Key
+                  API Key
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                    <Key size={16} />
-                  </div>
+                  <Key size={14} className="absolute left-3 top-2.5 text-slate-500" />
                   <input
                     type="text"
                     required
-                    placeholder="Enter broker API key"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="Enter API Key"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
@@ -429,48 +582,95 @@ export const BrokersPage: React.FC = () => {
                   API Secret
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
-                    <Lock size={16} />
-                  </div>
+                  <Lock size={14} className="absolute left-3 top-2.5 text-slate-500" />
                   <input
                     type="password"
                     required
-                    placeholder="Enter broker API secret"
                     value={apiSecret}
                     onChange={(e) => setApiSecret(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    placeholder="Enter API Secret"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
-                  Allocated Capital (₹ INR) <span className="text-[11px] text-slate-400 font-normal lowercase">(min ₹1,000)</span>
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  step="any"
-                  value={initialCapital}
-                  onChange={(e) => setInitialCapital(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
-                />
-              </div>
+              {tradingMode === 'Paper' && (
+                <div className="p-3 bg-emerald-950/30 border border-emerald-800/40 rounded-xl text-[11px] text-emerald-300">
+                  Paper Trading connections activate immediately with high-fidelity market order simulation and virtual capital.
+                </div>
+              )}
 
-              <div className="pt-2 flex items-center justify-end gap-2">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md transition disabled:opacity-50"
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
                 >
-                  {isSubmitting ? 'Saving...' : 'Connect Broker'}
+                  {isSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                  Connect & Vault Secrets
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Token Modal */}
+      {isTokenModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setIsTokenModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg"
+            >
+              <X size={18} />
+            </button>
+
+            <h3 className="text-lg font-bold text-white tracking-tight">Enter Access Token</h3>
+            <p className="text-xs text-slate-400 mt-1">
+              If you have already generated a daily session token via Python/Kite CLI, paste it here to authenticate immediately.
+            </p>
+
+            <form className="mt-5 space-y-4" onSubmit={handleApplyManualToken}>
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">
+                  Access Token / Session Token
+                </label>
+                <div className="relative">
+                  <Key size={14} className="absolute left-3 top-2.5 text-slate-500" />
+                  <input
+                    type="password"
+                    required
+                    value={manualAccessToken}
+                    onChange={(e) => setManualAccessToken(e.target.value)}
+                    placeholder="Paste access token from Kite/Upstox"
+                    className="w-full pl-9 pr-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white text-xs font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsTokenModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingToken || !manualAccessToken.trim()}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
+                >
+                  {isSubmittingToken ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                  Save & Set Engine Ready
                 </button>
               </div>
             </form>

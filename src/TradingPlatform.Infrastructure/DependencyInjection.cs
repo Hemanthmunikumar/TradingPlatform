@@ -50,6 +50,7 @@ public static class DependencyInjection
         services.AddScoped<IStrategyEngine, StrategyEngine>();
         services.AddScoped<IBacktestingService, BacktestingService>();
         services.AddHttpClient<IAiMarketAdvisorService, ConfigurableAiMarketAdvisorService>();
+        services.AddScoped<IIndiaDayTraderService, IndiaDayTraderService>();
 
         // Pre-Order Risk Validation & Safety Engine
         services.AddScoped<IRiskValidationService, RiskValidationService>();

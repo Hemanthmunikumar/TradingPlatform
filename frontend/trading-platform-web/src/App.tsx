@@ -11,6 +11,7 @@ import { ApprovalsPage } from './pages/ApprovalsPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { HelpSupportPage } from './pages/HelpSupportPage';
 import { AiMarketExpertPage } from './pages/AiMarketExpertPage';
+import { BrokerCallbackPage } from './pages/BrokerCallbackPage';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -58,6 +59,7 @@ export const App: React.FC = () => {
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="help" element={<HelpSupportPage />} />
+            <Route path="brokers/callback" element={<BrokerCallbackPage />} />
           </Route>
 
           {/* Catch-all */}

@@ -59,15 +59,19 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Global Trading Status Pills */}
         <div className="flex items-center gap-2.5">
-          {/* Trading Mode Badge */}
-          <div className={`px-2.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase flex items-center gap-1.5 ${
-            tradingMode === 'Paper' 
-              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
-              : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse'
-          }`}>
+          {/* Trading Mode Badge (Clickable link to Settings) */}
+          <Link 
+            to="/settings"
+            title="Click to switch between Paper and Live Trading"
+            className={`px-2.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase flex items-center gap-1.5 transition hover:scale-105 cursor-pointer ${
+              tradingMode === 'Paper' 
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20' 
+                : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse hover:bg-rose-500/20'
+            }`}
+          >
             <span className={`w-2 h-2 rounded-full ${tradingMode === 'Paper' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
             {tradingMode} Trading
-          </div>
+          </Link>
 
           {/* Kill Switch Indicator */}
           {isKillSwitchActive && (

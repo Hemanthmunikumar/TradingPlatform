@@ -149,6 +149,8 @@ public class CreateBrokerConnectionHandler(
         var encryptedApiSecret = encryptionService.Encrypt(req.ApiSecret.Trim());
 
         var isMock = provider.Code == BrokerCode.Mock;
+        var isPaper = req.TradingMode == TradingMode.Paper;
+        var isReady = isMock || isPaper;
 
         var connection = new BrokerConnection
         {
@@ -159,22 +161,23 @@ public class CreateBrokerConnectionHandler(
             TradingMode = req.TradingMode,
             IsActive = true,
             TradingEnabled = true,
-            IsAuthenticated = isMock, // Mock is immediately authenticated
-            LastAuthenticatedAtUtc = isMock ? DateTime.UtcNow : null,
-            TokenExpiresAtUtc = isMock ? DateTime.UtcNow.AddYears(1) : null
+            IsAuthenticated = isReady, // Mock and Paper modes are immediately authenticated
+            LastAuthenticatedAtUtc = isReady ? DateTime.UtcNow : null,
+            TokenExpiresAtUtc = isReady ? DateTime.UtcNow.AddYears(1) : null,
+            EncryptedAccessToken = isReady ? encryptionService.Encrypt($"simulated_paper_token_{Guid.NewGuid():N}") : null
         };
 
         // Initialize associated TradingAccount
         var defaultAccount = new TradingAccount
         {
             BrokerConnection = connection,
-            AccountId = isMock ? $"MOCK-{Guid.NewGuid():N}"[..12].ToUpperInvariant() : "PENDING_AUTH",
+            AccountId = isReady ? $"{provider.Code.ToString().ToUpperInvariant()}-PAPER-{Guid.NewGuid():N}"[..14] : "PENDING_AUTH",
             AccountName = $"{req.DisplayName} Primary",
             AccountType = AccountType.Equity,
             IsActive = true,
             TradingEnabled = true,
             TradingMode = req.TradingMode,
-            AvailableFunds = isMock ? 500_000m : 0m,
+            AvailableFunds = isReady ? (req.InitialCapital > 0 ? req.InitialCapital : 500_000m) : 0m,
             AllocatedCapital = 100_000m,
             Configuration = new AccountConfiguration
             {
@@ -358,6 +361,122 @@ public class ToggleTradingModeHandler(
     }
 }
 
+public record ActivatePaperConnectionCommand(Guid ConnectionId) : IRequest<BrokerConnectionDto>;
+
+public class ActivatePaperConnectionHandler(
+    ITradingDbContext dbContext,
+    ICredentialEncryptionService encryptionService) : IRequestHandler<ActivatePaperConnectionCommand, BrokerConnectionDto>
+{
+    public async Task<BrokerConnectionDto> Handle(ActivatePaperConnectionCommand command, CancellationToken cancellationToken)
+    {
+        var connection = await dbContext.BrokerConnections
+            .Include(bc => bc.BrokerProvider)
+            .Include(bc => bc.TradingAccounts)
+            .FirstOrDefaultAsync(bc => bc.Id == command.ConnectionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Broker connection not found.");
+
+        connection.IsAuthenticated = true;
+        connection.LastAuthenticatedAtUtc = DateTime.UtcNow;
+        connection.TokenExpiresAtUtc = DateTime.UtcNow.AddYears(1);
+        connection.EncryptedAccessToken = encryptionService.Encrypt($"simulated_paper_token_{Guid.NewGuid():N}");
+
+        foreach (var account in connection.TradingAccounts)
+        {
+            if (account.AccountId == "PENDING_AUTH" || string.IsNullOrWhiteSpace(account.AccountId))
+            {
+                account.AccountId = $"{connection.BrokerProvider.Code.ToString().ToUpperInvariant()}-PAPER-{Guid.NewGuid():N}"[..14];
+            }
+            if (account.AvailableFunds <= 0)
+            {
+                account.AvailableFunds = 500_000m;
+            }
+            account.TradingEnabled = true;
+            account.IsActive = true;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        string maskedApiKey = "******";
+        try
+        {
+            var raw = encryptionService.Decrypt(connection.EncryptedApiKey);
+            if (raw.Length > 4) maskedApiKey = $"***{raw[^4..]}";
+        }
+        catch { }
+
+        return new BrokerConnectionDto(
+            connection.Id,
+            connection.BrokerProviderId,
+            connection.BrokerProvider.Name,
+            connection.BrokerProvider.Code,
+            connection.DisplayName,
+            connection.IsAuthenticated,
+            connection.IsActive,
+            connection.TradingEnabled,
+            connection.TradingMode,
+            connection.TokenExpiresAtUtc,
+            maskedApiKey,
+            connection.CreatedAtUtc
+        );
+    }
+}
+
+public record SetManualTokenCommand(Guid ConnectionId, string AccessToken, DateTime? ExpiresAtUtc = null) : IRequest<BrokerConnectionDto>;
+
+public class SetManualTokenHandler(
+    ITradingDbContext dbContext,
+    ICredentialEncryptionService encryptionService) : IRequestHandler<SetManualTokenCommand, BrokerConnectionDto>
+{
+    public async Task<BrokerConnectionDto> Handle(SetManualTokenCommand command, CancellationToken cancellationToken)
+    {
+        var connection = await dbContext.BrokerConnections
+            .Include(bc => bc.BrokerProvider)
+            .Include(bc => bc.TradingAccounts)
+            .FirstOrDefaultAsync(bc => bc.Id == command.ConnectionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Broker connection not found.");
+
+        connection.IsAuthenticated = true;
+        connection.LastAuthenticatedAtUtc = DateTime.UtcNow;
+        connection.TokenExpiresAtUtc = command.ExpiresAtUtc ?? DateTime.UtcNow.AddHours(24);
+        connection.EncryptedAccessToken = encryptionService.Encrypt(command.AccessToken.Trim());
+
+        foreach (var account in connection.TradingAccounts)
+        {
+            if (account.AccountId == "PENDING_AUTH" || string.IsNullOrWhiteSpace(account.AccountId))
+            {
+                account.AccountId = $"{connection.BrokerProvider.Code.ToString().ToUpperInvariant()}-{Guid.NewGuid():N}"[..12].ToUpperInvariant();
+            }
+            account.TradingEnabled = true;
+            account.IsActive = true;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        string maskedApiKey = "******";
+        try
+        {
+            var raw = encryptionService.Decrypt(connection.EncryptedApiKey);
+            if (raw.Length > 4) maskedApiKey = $"***{raw[^4..]}";
+        }
+        catch { }
+
+        return new BrokerConnectionDto(
+            connection.Id,
+            connection.BrokerProviderId,
+            connection.BrokerProvider.Name,
+            connection.BrokerProvider.Code,
+            connection.DisplayName,
+            connection.IsAuthenticated,
+            connection.IsActive,
+            connection.TradingEnabled,
+            connection.TradingMode,
+            connection.TokenExpiresAtUtc,
+            maskedApiKey,
+            connection.CreatedAtUtc
+        );
+    }
+}
+
 public record DeleteBrokerConnectionCommand(Guid ConnectionId) : IRequest<bool>;
 
 public class DeleteBrokerConnectionHandler(ITradingDbContext dbContext) : IRequestHandler<DeleteBrokerConnectionCommand, bool>
@@ -445,7 +564,22 @@ public class GetTradingAccountsHandler(
                     c.KillSwitchActive,
                     c.TradingScheduleStart,
                     c.TradingScheduleEnd,
-                    c.IntradaySquareOffTime
+                    c.IntradaySquareOffTime,
+                    c.AllowedTradingSegment ?? "Both",
+                    c.IntradayMinVolume,
+                    c.IntradayStopLossPercent,
+                    c.IntradayTargetPercent,
+                    c.IntradayMaxCapitalAllocation,
+                    c.IntradayMaxOrderValue,
+                    c.IntradayDailyLossLimit,
+                    c.IntradayMaxPositions,
+                    c.DeliveryMinVolume,
+                    c.DeliveryStopLossPercent,
+                    c.DeliveryTargetPercent,
+                    c.DeliveryMaxCapitalAllocation,
+                    c.DeliveryMaxOrderValue,
+                    c.DeliveryDailyLossLimit,
+                    c.DeliveryMaxPositions
                 );
             }
 
@@ -507,6 +641,23 @@ public class UpdateAccountConfigurationHandler(ITradingDbContext dbContext) : IR
         c.AutoExecuteOnTimeout = req.AutoExecuteOnTimeout;
         c.KillSwitchActive = req.KillSwitchActive;
 
+        if (req.AllowedTradingSegment != null) c.AllowedTradingSegment = req.AllowedTradingSegment;
+        if (req.IntradayMinVolume.HasValue) c.IntradayMinVolume = req.IntradayMinVolume.Value;
+        if (req.IntradayStopLossPercent.HasValue) c.IntradayStopLossPercent = req.IntradayStopLossPercent.Value;
+        if (req.IntradayTargetPercent.HasValue) c.IntradayTargetPercent = req.IntradayTargetPercent.Value;
+        if (req.IntradayMaxCapitalAllocation.HasValue) c.IntradayMaxCapitalAllocation = req.IntradayMaxCapitalAllocation.Value;
+        if (req.IntradayMaxOrderValue.HasValue) c.IntradayMaxOrderValue = req.IntradayMaxOrderValue.Value;
+        if (req.IntradayDailyLossLimit.HasValue) c.IntradayDailyLossLimit = req.IntradayDailyLossLimit.Value;
+        if (req.IntradayMaxPositions.HasValue) c.IntradayMaxPositions = req.IntradayMaxPositions.Value;
+
+        if (req.DeliveryMinVolume.HasValue) c.DeliveryMinVolume = req.DeliveryMinVolume.Value;
+        if (req.DeliveryStopLossPercent.HasValue) c.DeliveryStopLossPercent = req.DeliveryStopLossPercent.Value;
+        if (req.DeliveryTargetPercent.HasValue) c.DeliveryTargetPercent = req.DeliveryTargetPercent.Value;
+        if (req.DeliveryMaxCapitalAllocation.HasValue) c.DeliveryMaxCapitalAllocation = req.DeliveryMaxCapitalAllocation.Value;
+        if (req.DeliveryMaxOrderValue.HasValue) c.DeliveryMaxOrderValue = req.DeliveryMaxOrderValue.Value;
+        if (req.DeliveryDailyLossLimit.HasValue) c.DeliveryDailyLossLimit = req.DeliveryDailyLossLimit.Value;
+        if (req.DeliveryMaxPositions.HasValue) c.DeliveryMaxPositions = req.DeliveryMaxPositions.Value;
+
         if (account.Configuration == null)
         {
             dbContext.AccountConfigurations.Add(c);
@@ -528,7 +679,22 @@ public class UpdateAccountConfigurationHandler(ITradingDbContext dbContext) : IR
             c.KillSwitchActive,
             c.TradingScheduleStart,
             c.TradingScheduleEnd,
-            c.IntradaySquareOffTime
+            c.IntradaySquareOffTime,
+            c.AllowedTradingSegment,
+            c.IntradayMinVolume,
+            c.IntradayStopLossPercent,
+            c.IntradayTargetPercent,
+            c.IntradayMaxCapitalAllocation,
+            c.IntradayMaxOrderValue,
+            c.IntradayDailyLossLimit,
+            c.IntradayMaxPositions,
+            c.DeliveryMinVolume,
+            c.DeliveryStopLossPercent,
+            c.DeliveryTargetPercent,
+            c.DeliveryMaxCapitalAllocation,
+            c.DeliveryMaxOrderValue,
+            c.DeliveryDailyLossLimit,
+            c.DeliveryMaxPositions
         );
     }
 }

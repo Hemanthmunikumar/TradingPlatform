@@ -66,6 +66,77 @@ export interface AccountConfigurationDto {
   tradingScheduleStart: string;
   tradingScheduleEnd: string;
   intradaySquareOffTime: string;
+  allowedTradingSegment?: 'Both' | 'Intraday' | 'Delivery';
+  intradayMinVolume?: number;
+  intradayStopLossPercent?: number;
+  intradayTargetPercent?: number;
+  intradayMaxCapitalAllocation?: number;
+  intradayMaxOrderValue?: number;
+  intradayDailyLossLimit?: number;
+  intradayMaxPositions?: number;
+  deliveryMinVolume?: number;
+  deliveryStopLossPercent?: number;
+  deliveryTargetPercent?: number;
+  deliveryMaxCapitalAllocation?: number;
+  deliveryMaxOrderValue?: number;
+  deliveryDailyLossLimit?: number;
+  deliveryMaxPositions?: number;
+}
+
+export interface PreMarket21EmaSignalDto {
+  symbol: string;
+  name: string;
+  spotPrice: number;
+  prevClose: number;
+  gainPercent: number;
+  volume: number;
+  ema21: number;
+  distanceToEmaPercent: number;
+  status: 'ACTIVE_BUY_AT_21EMA' | 'MONITORING_PULLBACK';
+  suggestedAtmOption: string;
+  stopLoss: number;
+  targetPrice: number;
+  strategy: string;
+  timeframe: string;
+  timestamp: string;
+}
+
+export interface PreMarketScanResponse {
+  strategy: string;
+  minGain: number;
+  maxGain: number;
+  minVolume: number;
+  totalScanned: number;
+  hitCount: number;
+  signals: PreMarket21EmaSignalDto[];
+}
+
+export interface IndiaOrbHitDto {
+  symbol: string;
+  exchange: string;
+  setups: string[];
+  price: number;
+  prevClose: number;
+  rsi: number;
+  volume: number;
+  nearUpperCircuit: boolean;
+  squareOff: string;
+  sessionClose: string;
+}
+
+export interface IndiaInsiderDealDto {
+  id: string;
+  kind: string;
+  date: string;
+  symbol: string;
+  security: string;
+  client: string;
+  side: string;
+  action: string;
+  shares: number;
+  price: number;
+  valueInr: number;
+  sameDayBothSides: boolean;
 }
 
 export interface TradingAccountDto {
@@ -269,4 +340,75 @@ export interface PortfolioAnalyticsDto {
   dailyPnLTrend: DailyPnLDataPointDto[];
   symbolBreakdown: SymbolPnLSummaryDto[];
   strategyBreakdown: StrategyPerformanceDto[];
+}
+
+export interface BrokerHoldingItemDto {
+  positionId: string;
+  symbol: string;
+  companyName: string;
+  quantity: number;
+  productType: string;
+  averageBuyPrice: number;
+  currentPrice: number;
+  dayChangePercent: number;
+  totalValue: number;
+  unrealizedPnL: number;
+  unrealizedPnLPercent: number;
+  aiVerdict: 'DIP_ACCUMULATION' | 'BOOK_PROFIT' | 'HOLD' | 'EXIT_STOP_LOSS';
+  aiRecommendationSummary: string;
+  suggestedAddQuantity: number;
+  stopLoss: number;
+  targetPrice: number;
+  convictionScore: number;
+}
+
+export interface BrokerOrderItemDto {
+  orderId: string;
+  brokerOrderId?: string;
+  symbol: string;
+  companyName: string;
+  side: string;
+  orderType: string;
+  productType: string;
+  quantity: number;
+  filledQuantity: number;
+  price: number;
+  averagePrice: number;
+  status: string;
+  statusMessage?: string;
+  createdAtUtc: string;
+}
+
+export interface BrokerSyncResponse {
+  tradingAccountId: string;
+  accountName: string;
+  brokerName: string;
+  tradingMode: string;
+  isPaperTrading: boolean;
+  availableFunds: number;
+  lastSyncedAtUtc: string;
+  holdings: BrokerHoldingItemDto[];
+  orders: BrokerOrderItemDto[];
+}
+
+export interface SpecialMonitorItemDto {
+  symbol: string;
+  companyName: string;
+  exchange: string;
+  lastPrice: number;
+  dayChange: number;
+  dayChangePercent: number;
+  dayHigh: number;
+  dayLow: number;
+  volume: number;
+  ema21: number;
+  distanceToEmaPercent: number;
+  suggestedAtmOption: string;
+  aiSignal: 'STRONG_BUY' | 'BUY_THE_DIP' | 'WAIT_FOR_PULLBACK' | 'ACCUMULATE' | string;
+  aiReason: string;
+  suggestedEntry: number;
+  stopLoss: number;
+  targetPrice: number;
+  riskRewardRatio: number;
+  confidenceScore: number;
 }

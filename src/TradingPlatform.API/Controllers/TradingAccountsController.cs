@@ -36,4 +36,24 @@ public class TradingAccountsController(ISender sender) : ControllerBase
             return NotFound(ApiResponse<object>.Fail(ex.Message));
         }
     }
+
+    [HttpPost("{id:guid}/toggle-mode")]
+    [ProducesResponseType(typeof(ApiResponse<TradingAccountDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ToggleMode(Guid id, [FromBody] ToggleTradingModeRequest request, CancellationToken cancellationToken)
+    {
+        var accounts = await sender.Send(new GetTradingAccountsQuery(), cancellationToken);
+        var targetAccount = accounts.FirstOrDefault(a => a.Id == id);
+        if (targetAccount == null)
+        {
+            return NotFound(ApiResponse<object>.Fail("Trading account not found."));
+        }
+
+        await sender.Send(new ToggleTradingModeCommand(targetAccount.BrokerConnectionId, request.TradingMode), cancellationToken);
+
+        // Fetch refreshed accounts
+        var refreshedAccounts = await sender.Send(new GetTradingAccountsQuery(), cancellationToken);
+        var updatedAccount = refreshedAccounts.First(a => a.Id == id);
+        return Ok(ApiResponse<TradingAccountDto>.Ok(updatedAccount, $"Switched to {request.TradingMode} trading mode."));
+    }
 }
