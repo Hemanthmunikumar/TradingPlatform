@@ -49,10 +49,10 @@ export const DashboardLayout: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-sky-500/20">
-              AP
+              SS
             </div>
             <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-              AlgoPlatform
+              StrikeSutra
             </span>
           </div>
         </div>

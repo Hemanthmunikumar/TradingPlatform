@@ -13,6 +13,12 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
     private readonly ICredentialEncryptionService _encryptionService;
     private readonly ILogger<ZerodhaBrokerAdapter> _logger;
 
+    // NSE/SEBI retail algo compliance: enforce <= 8 orders/sec (under 10 OPS threshold)
+    private static readonly SemaphoreSlim _orderRateLock = new(1, 1);
+    private static readonly Queue<DateTime> _recentOrderTimestamps = new();
+    private const int MaxOrdersPerSecond = 8;
+    private const string SelfAlgoOrderTag = "ALGO-SELF-TP26";
+
     public ZerodhaBrokerAdapter(
         HttpClient httpClient,
         ICredentialEncryptionService encryptionService,
@@ -118,18 +124,50 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
     }
 
     // Order Execution
-    public Task<OrderResponse> PlaceOrderAsync(BrokerConnection connection, TradingAccount account, OrderRequest request, CancellationToken cancellationToken = default)
+    public async Task<OrderResponse> PlaceOrderAsync(BrokerConnection connection, TradingAccount account, OrderRequest request, CancellationToken cancellationToken = default)
     {
         if (account.TradingMode != TradingMode.Live)
         {
             // Paper mode safeguard
-            return Task.FromResult(new OrderResponse(true, $"PAPER-ZERODHA-{Guid.NewGuid():N}", OrderStatus.Filled, "Simulated in paper mode"));
+            return new OrderResponse(true, $"PAPER-ZERODHA-{Guid.NewGuid():N}", OrderStatus.Filled, "Simulated in paper mode");
         }
 
-        _logger.LogInformation("LIVE ZERODHA: Placing {Side} {Qty} of {Token} on account {Account}",
-            request.Side, request.Quantity, request.InstrumentToken, account.AccountId);
+        // Enforce SEBI/NSE retail algo rate limit before dispatching live order
+        await EnforceOrderRateLimitAsync(cancellationToken);
 
-        return Task.FromResult(new OrderResponse(true, $"ZERODHA-{Guid.NewGuid():N}", OrderStatus.Submitted, "Live order placed with Zerodha"));
+        _logger.LogInformation("LIVE ZERODHA [Tag:{Tag}]: Placing {Side} {Qty} of {Token} on account {Account}",
+            SelfAlgoOrderTag, request.Side, request.Quantity, request.InstrumentToken, account.AccountId);
+
+        return new OrderResponse(true, $"ZERODHA-{Guid.NewGuid():N}", OrderStatus.Submitted, $"Live order placed with Zerodha (Tag: {SelfAlgoOrderTag})");
+    }
+
+    private static async Task EnforceOrderRateLimitAsync(CancellationToken cancellationToken)
+    {
+        await _orderRateLock.WaitAsync(cancellationToken);
+        try
+        {
+            var now = DateTime.UtcNow;
+            while (_recentOrderTimestamps.Count > 0 && (now - _recentOrderTimestamps.Peek()).TotalSeconds >= 1.0)
+            {
+                _recentOrderTimestamps.Dequeue();
+            }
+
+            if (_recentOrderTimestamps.Count >= MaxOrdersPerSecond)
+            {
+                var oldest = _recentOrderTimestamps.Peek();
+                var waitMs = (int)Math.Ceiling(1000.0 - (now - oldest).TotalMilliseconds) + 10;
+                if (waitMs > 0)
+                {
+                    await Task.Delay(waitMs, cancellationToken);
+                }
+            }
+
+            _recentOrderTimestamps.Enqueue(DateTime.UtcNow);
+        }
+        finally
+        {
+            _orderRateLock.Release();
+        }
     }
 
     public Task<OrderResponse> ModifyOrderAsync(BrokerConnection connection, TradingAccount account, string brokerOrderId, int newQuantity, decimal? newPrice, decimal? newTriggerPrice, CancellationToken cancellationToken = default)

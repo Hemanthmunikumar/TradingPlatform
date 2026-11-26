@@ -41,7 +41,7 @@ public class IndiaDayTraderService(
     public async Task<PreMarketScanResponse> ScanPreMarket21EmaAsync(
         decimal minGain = 1.0m,
         decimal maxGain = 2.5m,
-        long minVolume = 30000,
+        long minVolume = 20000,
         string? symbols = null,
         CancellationToken ct = default)
     {
@@ -78,9 +78,17 @@ public class IndiaDayTraderService(
                             s.GetProperty("suggestedAtmOption").GetString() ?? "",
                             s.GetProperty("stopLoss").GetDecimal(),
                             s.GetProperty("targetPrice").GetDecimal(),
-                            s.GetProperty("strategy").GetString() ?? "Pre-Market 21-EMA Pullback",
+                            s.GetProperty("strategy").GetString() ?? "Pre-Market F&O 21-EMA Pullback",
                             s.GetProperty("timeframe").GetString() ?? "5m / Pre-market",
-                            s.TryGetProperty("timestamp", out var ts) ? ts.GetDateTime() : DateTime.UtcNow
+                            s.TryGetProperty("timestamp", out var ts) ? ts.GetDateTime() : DateTime.UtcNow,
+                            s.TryGetProperty("optionSymbol", out var optSym) ? optSym.GetString() ?? "" : "",
+                            s.TryGetProperty("optionLtp", out var optLtp) ? optLtp.GetDecimal() : 0m,
+                            s.TryGetProperty("optionEma21", out var optEma) ? optEma.GetDecimal() : 0m,
+                            s.TryGetProperty("optionStopLoss", out var optSl) ? optSl.GetDecimal() : 0m,
+                            s.TryGetProperty("optionTarget", out var optTgt) ? optTgt.GetDecimal() : 0m,
+                            !s.TryGetProperty("uptrendConfirmed", out var up) || up.GetBoolean(),
+                            s.TryGetProperty("newsSentiment", out var ns) ? ns.GetString() ?? "NEUTRAL" : "NEUTRAL",
+                            s.TryGetProperty("newsHeadline", out var nh) ? nh.GetString() ?? "" : ""
                         ));
                     }
                 }
@@ -125,11 +133,19 @@ public class IndiaDayTraderService(
                     0.20m,
                     "ACTIVE_BUY_AT_21EMA",
                     "1000 CE",
-                    976.20m,
-                    1048.00m,
-                    "Pre-Market 1-2.5% Gainer + 21 EMA Pullback",
+                    971.20m,
+                    1097.97m,
+                    "Pre-Market F&O 1-2.5% Uptrend + 21 EMA Pullback",
                     "5m / Pre-market",
-                    DateTime.UtcNow
+                    DateTime.UtcNow,
+                    "TATAMOTORS26NOV1000CE",
+                    27.95m,
+                    27.89m,
+                    27.19m,
+                    30.75m,
+                    true,
+                    "POSITIVE",
+                    "Strong EV & commercial vehicle volume growth supports uptrend"
                 )
             ]
         );

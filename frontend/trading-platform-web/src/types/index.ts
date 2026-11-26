@@ -99,6 +99,14 @@ export interface PreMarket21EmaSignalDto {
   strategy: string;
   timeframe: string;
   timestamp: string;
+  optionSymbol?: string;
+  optionLtp?: number;
+  optionEma21?: number;
+  optionStopLoss?: number;
+  optionTarget?: number;
+  uptrendConfirmed?: boolean;
+  newsSentiment?: 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE';
+  newsHeadline?: string;
 }
 
 export interface PreMarketScanResponse {

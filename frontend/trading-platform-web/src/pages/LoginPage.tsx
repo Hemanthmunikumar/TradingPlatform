@@ -43,21 +43,25 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 px-4 text-slate-100">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-2xl text-white shadow-xl shadow-sky-500/25 mx-auto">
-          AP
-        </div>
-        <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
-          Sign In to AlgoPlatform
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Professional Broker-Independent Indian Stock Trading System
-        </p>
-      </div>
+    <div className="relative min-h-screen w-full bg-slate-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 text-slate-100 overflow-hidden">
+      {/* Subtle Ambient Glow */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 w-[560px] h-[560px] rounded-full bg-sky-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 right-1/4 w-[420px] h-[420px] rounded-full bg-indigo-600/10 blur-3xl" />
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-900/90 py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10 backdrop-blur-md">
+      <div className="relative z-10 w-full max-w-md mx-auto">
+        <div className="text-center">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-500 via-indigo-500 to-emerald-500 flex items-center justify-center font-black text-2xl text-white shadow-2xl shadow-sky-500/30 mx-auto ring-1 ring-white/15">
+            SS
+          </div>
+          <h2 className="mt-5 text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+            Sign In to StrikeSutra
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Precision Indian NSE/BSE F&amp;O &amp; Equity Algorithmic Trading
+          </p>
+        </div>
+
+        <div className="mt-8 bg-slate-900/90 py-8 px-6 shadow-2xl shadow-black/60 rounded-2xl border border-slate-800/90 sm:px-10 backdrop-blur-xl">
           {/* Quick Demo Credentials Pill */}
           <div className="mb-5 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-between">
             <div>

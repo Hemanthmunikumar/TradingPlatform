@@ -29,7 +29,7 @@ public class AccountConfiguration : BaseEntity, IMustHaveTenant
     public string AllowedTradingSegment { get; set; } = "Both";
 
     // Intraday Specific Configurations
-    public int IntradayMinVolume { get; set; } = 30000;
+    public int IntradayMinVolume { get; set; } = 20000;
     public decimal IntradayStopLossPercent { get; set; } = 2.0m;
     public decimal IntradayTargetPercent { get; set; } = 5.0m;
     public decimal IntradayMaxCapitalAllocation { get; set; } = 500000m;

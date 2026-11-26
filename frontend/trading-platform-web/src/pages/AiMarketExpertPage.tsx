@@ -95,7 +95,7 @@ export const AiMarketExpertPage: React.FC = () => {
   // Pre-market filter state
   const [minGain, setMinGain] = useState<number>(1.0);
   const [maxGain, setMaxGain] = useState<number>(2.5);
-  const [minVolume, setMinVolume] = useState<number>(30000);
+  const [minVolume, setMinVolume] = useState<number>(20000);
 
   // AI Configuration State
   const [isConfigOpen, setIsConfigOpen] = useState(false);
@@ -1290,7 +1290,7 @@ export const AiMarketExpertPage: React.FC = () => {
               </div>
             </div>
             <p className="text-slate-300 leading-relaxed">
-              Scans pre-market session gainers up <strong>{minGain}% to {maxGain}%</strong> with high volume (≥ {minVolume.toLocaleString()} shares). When price pulls back to touch the <strong>21 EMA</strong>, it calculates bounce confirmation, ATM Call Option strike (e.g. ₹1000 spot → 1000 CE), and provides 1-click execution.
+              Scans <strong>F&amp;O segment</strong> pre-market gainers up <strong>{minGain}% to {maxGain}%</strong> in a confirmed <strong>uptrend</strong> with positive news support and volume (≥ {minVolume.toLocaleString()} shares). After open, waits for a pullback touching the <strong>21 EMA</strong>, auto-selects the <strong>ATM Call Option</strong>, and sets <strong>Option SL (-2.5% below 21 EMA)</strong> &amp; <strong>Target (+10%)</strong>.
             </p>
           </div>
 
@@ -1350,10 +1350,33 @@ export const AiMarketExpertPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Risk & Target */}
-                  <div className="flex items-center justify-between text-xs px-1">
-                    <span className="text-rose-400 font-semibold">Stop Loss: ₹{sig.stopLoss.toFixed(2)}</span>
-                    <span className="text-emerald-400 font-semibold">Target: ₹{sig.targetPrice.toFixed(2)}</span>
+                  {/* Uptrend & News Badges */}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
+                      📈 Uptrend Confirmed
+                    </span>
+                    <span className={`px-2 py-0.5 rounded border font-semibold ${
+                      sig.newsSentiment === 'POSITIVE'
+                        ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                        : 'bg-slate-800 text-slate-300 border-slate-700'
+                    }`}>
+                      {sig.newsSentiment === 'POSITIVE' ? '📰 Positive News' : '📰 Neutral News'}
+                    </span>
+                    {sig.optionSymbol && (
+                      <span className="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 font-mono font-bold">
+                        {sig.optionSymbol}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Risk & Target (Option-Based & Spot) */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs px-1">
+                    <span className="text-rose-400 font-semibold">
+                      Option SL (-2.5% EMA): ₹{(sig.optionStopLoss && sig.optionStopLoss > 0 ? sig.optionStopLoss : sig.stopLoss).toFixed(2)}
+                    </span>
+                    <span className="text-emerald-400 font-semibold">
+                      Option Target (+10%): ₹{(sig.optionTarget && sig.optionTarget > 0 ? sig.optionTarget : sig.targetPrice).toFixed(2)}
+                    </span>
                   </div>
 
                   {/* 1-Click Trigger */}

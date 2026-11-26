@@ -15,7 +15,15 @@ public record PreMarket21EmaSignalDto(
     decimal TargetPrice,
     string Strategy,
     string Timeframe,
-    DateTime Timestamp
+    DateTime Timestamp,
+    string OptionSymbol = "",
+    decimal OptionLtp = 0m,
+    decimal OptionEma21 = 0m,
+    decimal OptionStopLoss = 0m,
+    decimal OptionTarget = 0m,
+    bool UptrendConfirmed = true,
+    string NewsSentiment = "NEUTRAL",
+    string NewsHeadline = ""
 );
 
 public record PreMarketScanResponse(
@@ -61,7 +69,7 @@ public interface IIndiaDayTraderService
     Task<PreMarketScanResponse> ScanPreMarket21EmaAsync(
         decimal minGain = 1.0m,
         decimal maxGain = 2.5m,
-        long minVolume = 30000,
+        long minVolume = 20000,
         string? symbols = null,
         CancellationToken ct = default);
 

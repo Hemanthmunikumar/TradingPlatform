@@ -407,7 +407,7 @@ public class AiAdvisorController(
         CancellationToken ct = default)
     {
         // If minVolume not specified in query, load from account configuration
-        long effectiveVolume = minVolume ?? 30000;
+        long effectiveVolume = minVolume ?? 20000;
         if (!minVolume.HasValue)
         {
             var activeAccount = await dbContext.TradingAccounts

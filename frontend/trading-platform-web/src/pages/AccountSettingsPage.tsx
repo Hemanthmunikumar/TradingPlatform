@@ -42,7 +42,7 @@ export const AccountSettingsPage: React.FC = () => {
     tradingScheduleEnd: '15:30:00',
     intradaySquareOffTime: '15:15:00',
     allowedTradingSegment: 'Both',
-    intradayMinVolume: 30000,
+    intradayMinVolume: 20000,
     intradayStopLossPercent: 2.0,
     intradayTargetPercent: 5.0,
     intradayMaxCapitalAllocation: 500000,
@@ -81,7 +81,7 @@ export const AccountSettingsPage: React.FC = () => {
               ...prev,
               ...c,
               allowedTradingSegment: c.allowedTradingSegment || 'Both',
-              intradayMinVolume: c.intradayMinVolume ?? 30000,
+              intradayMinVolume: c.intradayMinVolume ?? 20000,
               intradayStopLossPercent: c.intradayStopLossPercent ?? 2.0,
               intradayTargetPercent: c.intradayTargetPercent ?? 5.0,
               intradayMaxCapitalAllocation: c.intradayMaxCapitalAllocation ?? 500000,
@@ -119,7 +119,7 @@ export const AccountSettingsPage: React.FC = () => {
         ...prev,
         ...c,
         allowedTradingSegment: c.allowedTradingSegment || 'Both',
-        intradayMinVolume: c.intradayMinVolume ?? 30000,
+        intradayMinVolume: c.intradayMinVolume ?? 20000,
         intradayStopLossPercent: c.intradayStopLossPercent ?? 2.0,
         intradayTargetPercent: c.intradayTargetPercent ?? 5.0,
         intradayMaxCapitalAllocation: c.intradayMaxCapitalAllocation ?? 500000,
@@ -183,7 +183,7 @@ export const AccountSettingsPage: React.FC = () => {
           ...prev,
           ...d,
           allowedTradingSegment: d.allowedTradingSegment || 'Both',
-          intradayMinVolume: d.intradayMinVolume ?? 30000,
+          intradayMinVolume: d.intradayMinVolume ?? 20000,
           intradayStopLossPercent: d.intradayStopLossPercent ?? 2.0,
           intradayTargetPercent: d.intradayTargetPercent ?? 5.0,
           intradayMaxCapitalAllocation: d.intradayMaxCapitalAllocation ?? 500000,
@@ -412,12 +412,12 @@ export const AccountSettingsPage: React.FC = () => {
                 type="number"
                 min={0}
                 step="any"
-                value={config.intradayMinVolume ?? 30000}
+                value={config.intradayMinVolume ?? 20000}
                 onChange={(e) => setConfig({ ...config, intradayMinVolume: e.target.value === '' ? 0 : Number(e.target.value) })}
                 className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 font-mono"
-                placeholder="30000"
+                placeholder="20000"
               />
-              <p className="text-[11px] text-slate-400 mt-1">Default: <strong>30,000</strong></p>
+              <p className="text-[11px] text-slate-400 mt-1">Default: <strong>20,000</strong></p>
             </div>
 
             {/* 2. Stop Loss % */}
