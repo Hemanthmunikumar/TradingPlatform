@@ -29,6 +29,14 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AllowedTradingSegment")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("Both")
+                        .HasColumnName("allowed_trading_segment");
+
                     b.Property<int>("ApprovalDurationSeconds")
                         .HasColumnType("integer")
                         .HasColumnName("approval_duration_seconds");
@@ -46,9 +54,75 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("numeric(18,4)")
                         .HasColumnName("daily_loss_limit");
 
+                    b.Property<decimal>("DeliveryDailyLossLimit")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("delivery_daily_loss_limit");
+
+                    b.Property<decimal>("DeliveryMaxCapitalAllocation")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("delivery_max_capital_allocation");
+
+                    b.Property<decimal>("DeliveryMaxOrderValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("delivery_max_order_value");
+
+                    b.Property<int>("DeliveryMaxPositions")
+                        .HasColumnType("integer")
+                        .HasColumnName("delivery_max_positions");
+
+                    b.Property<int>("DeliveryMinVolume")
+                        .HasColumnType("integer")
+                        .HasColumnName("delivery_min_volume");
+
+                    b.Property<decimal>("DeliveryStopLossPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("delivery_stop_loss_percent");
+
+                    b.Property<decimal>("DeliveryTargetPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("delivery_target_percent");
+
+                    b.Property<decimal>("IntradayDailyLossLimit")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("intraday_daily_loss_limit");
+
+                    b.Property<decimal>("IntradayMaxCapitalAllocation")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("intraday_max_capital_allocation");
+
+                    b.Property<decimal>("IntradayMaxOrderValue")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)")
+                        .HasColumnName("intraday_max_order_value");
+
+                    b.Property<int>("IntradayMaxPositions")
+                        .HasColumnType("integer")
+                        .HasColumnName("intraday_max_positions");
+
+                    b.Property<int>("IntradayMinVolume")
+                        .HasColumnType("integer")
+                        .HasColumnName("intraday_min_volume");
+
                     b.Property<TimeOnly>("IntradaySquareOffTime")
                         .HasColumnType("time without time zone")
                         .HasColumnName("intraday_square_off_time");
+
+                    b.Property<decimal>("IntradayStopLossPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("intraday_stop_loss_percent");
+
+                    b.Property<decimal>("IntradayTargetPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("intraday_target_percent");
 
                     b.Property<bool>("KillSwitchActive")
                         .HasColumnType("boolean")
@@ -354,7 +428,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             Id = new Guid("10000000-0000-0000-0000-000000000001"),
                             ApiBaseUrl = "http://localhost:5000/mock-broker",
                             Code = 1,
-                            CreatedAtUtc = new DateTime(2026, 11, 11, 8, 24, 16, 19, DateTimeKind.Utc).AddTicks(4380),
+                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 568, DateTimeKind.Utc).AddTicks(9161),
                             IsActive = true,
                             Name = "Mock Simulator"
                         },
@@ -364,7 +438,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             ApiBaseUrl = "https://api.upstox.com/v2",
                             AuthorizationUrl = "https://api.upstox.com/v2/login/authorization/dialog",
                             Code = 2,
-                            CreatedAtUtc = new DateTime(2026, 11, 11, 8, 24, 16, 20, DateTimeKind.Utc).AddTicks(1976),
+                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 570, DateTimeKind.Utc).AddTicks(2576),
                             IsActive = true,
                             Name = "Upstox",
                             TokenUrl = "https://api.upstox.com/v2/login/authorization/token",
@@ -376,7 +450,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             ApiBaseUrl = "https://api.kite.trade",
                             AuthorizationUrl = "https://kite.zerodha.com/connect/login",
                             Code = 3,
-                            CreatedAtUtc = new DateTime(2026, 11, 11, 8, 24, 16, 20, DateTimeKind.Utc).AddTicks(5610),
+                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 570, DateTimeKind.Utc).AddTicks(7830),
                             IsActive = true,
                             Name = "Zerodha",
                             TokenUrl = "https://api.kite.trade/session/token",
@@ -1232,14 +1306,14 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            CreatedAtUtc = new DateTime(2026, 11, 11, 8, 24, 16, 97, DateTimeKind.Utc).AddTicks(2128),
+                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 673, DateTimeKind.Utc).AddTicks(8341),
                             Description = "Platform Administrator",
                             Name = "Admin"
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            CreatedAtUtc = new DateTime(2026, 11, 11, 8, 24, 16, 97, DateTimeKind.Utc).AddTicks(5319),
+                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 674, DateTimeKind.Utc).AddTicks(2719),
                             Description = "Standard Trading User",
                             Name = "User"
                         });
