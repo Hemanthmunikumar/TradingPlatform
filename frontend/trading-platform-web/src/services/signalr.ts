@@ -41,7 +41,7 @@ class SignalRClient {
 
     this.isConnecting = true;
     const token = localStorage.getItem('access_token');
-    const hubUrl = import.meta.env.VITE_HUB_URL || 'http://localhost:5000/hubs/trading';
+    const hubUrl = import.meta.env.VITE_HUB_URL || (import.meta.env.PROD ? '/hubs/trading' : 'http://localhost:5000/hubs/trading');
 
     this.connection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
