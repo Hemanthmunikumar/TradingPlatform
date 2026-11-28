@@ -432,12 +432,17 @@ export const BrokersPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Authentication:</span>
-                  <span className={`inline-flex items-center gap-1 font-semibold ${
-                    conn.isAuthenticated ? 'text-emerald-400' : 'text-amber-400'
-                  }`}>
-                    {conn.isAuthenticated ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
-                    {conn.isAuthenticated ? 'Authenticated' : 'Pending Login'}
-                  </span>
+                  {(() => {
+                    const isExpired = conn.providerCode !== 'Mock' && !conn.isAuthenticated && Boolean(conn.tokenExpiresAtUtc);
+                    return (
+                      <span className={`inline-flex items-center gap-1 font-semibold ${
+                        conn.isAuthenticated ? 'text-emerald-400' : isExpired ? 'text-rose-400' : 'text-amber-400'
+                      }`}>
+                        {conn.isAuthenticated ? <CheckCircle2 size={13} /> : <AlertCircle size={13} />}
+                        {conn.isAuthenticated ? 'Authenticated' : isExpired ? 'Expired (06:00 IST)' : 'Pending Login'}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-500">Secrets Vault:</span>
@@ -465,7 +470,7 @@ export const BrokersPage: React.FC = () => {
                     className="w-full py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition"
                   >
                     <ExternalLink size={14} />
-                    Authorize via Broker OAuth
+                    {conn.tokenExpiresAtUtc ? 'Re-authenticate with Broker' : 'Authorize via Broker OAuth'}
                   </button>
                   <button
                     onClick={() => openTokenModal(conn.id)}
@@ -485,18 +490,28 @@ export const BrokersPage: React.FC = () => {
                   </div>
 
                   {conn.providerCode !== 'Mock' && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleConnectionMode(conn.id, conn.tradingMode)}
-                      className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm ${
-                        conn.tradingMode === 'Paper'
-                          ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-rose-600/20'
-                          : 'bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-600/20'
-                      }`}
-                    >
-                      <ArrowRightLeft size={13} />
-                      {conn.tradingMode === 'Paper' ? 'Switch to Live Trading Mode' : 'Switch to Paper Trading Mode'}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleConnectionMode(conn.id, conn.tradingMode)}
+                        className={`w-full py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm ${
+                          conn.tradingMode === 'Paper'
+                            ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-rose-600/20'
+                            : 'bg-emerald-600/90 hover:bg-emerald-500 text-white shadow-emerald-600/20'
+                        }`}
+                      >
+                        <ArrowRightLeft size={13} />
+                        {conn.tradingMode === 'Paper' ? 'Switch to Live Trading Mode' : 'Switch to Paper Trading Mode'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleOAuthLogin(conn.id)}
+                        className="w-full py-1.5 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-300 text-[11px] font-semibold flex items-center justify-center gap-1.5 border border-slate-700 transition"
+                      >
+                        <RefreshCw size={12} />
+                        Re-authenticate {conn.providerName}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}

@@ -78,10 +78,15 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
             if (res.IsSuccessStatusCode)
             {
                 var body = await res.Content.ReadFromJsonAsync<KiteTokenResponse>();
+                // Zerodha Kite invalidates all access tokens daily at 06:00 IST (00:30 UTC)
+                var nowUtc = DateTime.UtcNow;
+                var todayExpiryUtc = nowUtc.Date.AddMinutes(30); // 00:30 UTC = 06:00 IST
+                var nextExpiryUtc = nowUtc < todayExpiryUtc ? todayExpiryUtc : todayExpiryUtc.AddDays(1);
+
                 return new TokenExchangeResult(
                     AccessToken: body?.Data?.AccessToken ?? string.Empty,
                     RefreshToken: null,
-                    ExpiresAtUtc: DateTime.UtcNow.AddHours(12),
+                    ExpiresAtUtc: nextExpiryUtc,
                     Success: true,
                     ErrorMessage: null
                 );
@@ -102,9 +107,24 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
         return Task.FromResult(new TokenExchangeResult(string.Empty, null, DateTime.UtcNow, false, "Zerodha requires daily manual re-login."));
     }
 
-    public Task<bool> ValidateTokenAsync(BrokerConnection connection)
+    public async Task<bool> ValidateTokenAsync(BrokerConnection connection)
     {
-        return Task.FromResult(connection.TokenExpiresAtUtc.HasValue && connection.TokenExpiresAtUtc.Value > DateTime.UtcNow);
+        if (!connection.TokenExpiresAtUtc.HasValue || connection.TokenExpiresAtUtc.Value <= DateTime.UtcNow)
+            return false;
+
+        if (string.IsNullOrWhiteSpace(connection.EncryptedAccessToken))
+            return false;
+
+        try
+        {
+            using var req = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/user/profile", connection);
+            var res = await _httpClient.SendAsync(req);
+            return res.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return connection.TokenExpiresAtUtc.Value > DateTime.UtcNow;
+        }
     }
 
     // Market Data

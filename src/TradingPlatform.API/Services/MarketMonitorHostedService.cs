@@ -40,11 +40,39 @@ public class MarketMonitorHostedService(
                     _lastAlertDate = today;
                 }
 
-                // Run only on weekdays during NSE market hours (09:00 - 15:25 IST)
+                // Run only on weekdays
                 if (istNow.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
                     continue;
 
                 var time = TimeOnly.FromDateTime(istNow);
+
+                // Morning 06:05-08:55 IST reminder if Zerodha daily token expired at 06:00 IST
+                if (time >= new TimeOnly(6, 5) && time < new TimeOnly(9, 0))
+                {
+                    var remKey = $"ZREM:{today:yyyyMMdd}";
+                    if (_alertedToday.Add(remKey))
+                    {
+                        using var remScope = serviceProvider.CreateScope();
+                        var remDb = remScope.ServiceProvider.GetRequiredService<TradingDbContext>();
+                        var notifier = remScope.ServiceProvider.GetRequiredService<TradingPlatform.Application.Interfaces.Notifications.ITradingNotificationService>();
+                        var zerodha = await remDb.BrokerConnections
+                            .Include(bc => bc.BrokerProvider)
+                            .FirstOrDefaultAsync(bc => bc.IsActive && bc.BrokerProvider.Code == BrokerCode.Zerodha, stoppingToken);
+
+                        if (zerodha != null && (!zerodha.IsAuthenticated || !zerodha.TokenExpiresAtUtc.HasValue || zerodha.TokenExpiresAtUtc.Value <= DateTime.UtcNow))
+                        {
+                            await notifier.PublishSystemAlertAsync(
+                                new TradingPlatform.Contracts.Notifications.SystemAlertNotificationDto(
+                                    Level: "Warning",
+                                    Title: "Zerodha Daily Session Expired (06:00 IST)",
+                                    Message: "Zerodha invalidates Kite access tokens daily at 06:00 IST. Open Brokers & Accounts and click Re-authenticate before 09:00 IST.",
+                                    TimestampUtc: DateTime.UtcNow),
+                                stoppingToken);
+                        }
+                    }
+                    continue;
+                }
+
                 if (time < new TimeOnly(9, 0) || time > new TimeOnly(15, 25))
                     continue;
 

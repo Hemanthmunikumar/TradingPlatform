@@ -76,7 +76,8 @@ public record GetBrokerConnectionsQuery : IRequest<IReadOnlyList<BrokerConnectio
 
 public class GetBrokerConnectionsHandler(
     ITradingDbContext dbContext,
-    ICredentialEncryptionService encryptionService) : IRequestHandler<GetBrokerConnectionsQuery, IReadOnlyList<BrokerConnectionDto>>
+    ICredentialEncryptionService encryptionService,
+    IBrokerAdapterFactory adapterFactory) : IRequestHandler<GetBrokerConnectionsQuery, IReadOnlyList<BrokerConnectionDto>>
 {
     public async Task<IReadOnlyList<BrokerConnectionDto>> Handle(GetBrokerConnectionsQuery request, CancellationToken cancellationToken)
     {
@@ -84,6 +85,38 @@ public class GetBrokerConnectionsHandler(
             .Include(bc => bc.BrokerProvider)
             .OrderByDescending(bc => bc.CreatedAtUtc)
             .ToListAsync(cancellationToken);
+
+        bool changed = false;
+        foreach (var bc in connections)
+        {
+            if (bc.BrokerProvider.Code == BrokerCode.Mock || !bc.IsAuthenticated)
+                continue;
+
+            var expiredByTime = !bc.TokenExpiresAtUtc.HasValue || bc.TokenExpiresAtUtc.Value <= DateTime.UtcNow;
+            if (expiredByTime)
+            {
+                bc.IsAuthenticated = false;
+                changed = true;
+                continue;
+            }
+
+            if (bc.IsActive && bc.BrokerProvider.Code == BrokerCode.Zerodha)
+            {
+                var adapter = adapterFactory.GetAdapter(BrokerCode.Zerodha);
+                var valid = await adapter.Authentication.ValidateTokenAsync(bc);
+                if (!valid)
+                {
+                    bc.IsAuthenticated = false;
+                    bc.TokenExpiresAtUtc = DateTime.UtcNow;
+                    changed = true;
+                }
+            }
+        }
+
+        if (changed)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
         return connections.Select(bc =>
         {
