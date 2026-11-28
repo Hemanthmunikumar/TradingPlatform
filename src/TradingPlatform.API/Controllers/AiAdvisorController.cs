@@ -508,12 +508,36 @@ public class AiAdvisorController(
         var isPaper = account.TradingMode == TradingMode.Paper;
         var brokerName = account.BrokerConnection?.DisplayName ?? "Zerodha Kite";
 
-        // If Zerodha is authenticated, sync real CNC holdings & intraday positions from Kite Connect v3
+        // If Zerodha is authenticated, sync real CNC holdings, positions, funds & orders from Kite Connect v3
         if (account.BrokerConnection?.BrokerProvider?.Code == BrokerCode.Zerodha && account.BrokerConnection.IsAuthenticated)
         {
+            if (!isPaper)
+            {
+                // Remove any stale paper-seeded mock/demo orders & positions on Live Zerodha account
+                var staleOrders = await dbContext.TradingOrders
+                    .Where(o => o.TradingAccountId == account.Id && o.BrokerOrderId != null && o.BrokerOrderId.StartsWith("KITE-ORD-"))
+                    .ToListAsync(ct);
+                if (staleOrders.Count > 0)
+                {
+                    var staleInstIds = staleOrders.Select(o => o.InstrumentId).Distinct().ToList();
+                    var stalePositions = await dbContext.Positions
+                        .Where(p => p.TradingAccountId == account.Id && p.IsOpen && staleInstIds.Contains(p.InstrumentId))
+                        .ToListAsync(ct);
+                    dbContext.TradingOrders.RemoveRange(staleOrders);
+                    dbContext.Positions.RemoveRange(stalePositions);
+                    await dbContext.SaveChangesAsync(ct);
+                }
+            }
+
             try
             {
                 var zerodhaAdapter = brokerAdapterFactory.GetAdapter(BrokerCode.Zerodha);
+                var liveFunds = await zerodhaAdapter.Funds.GetFundsAsync(account.BrokerConnection, account, ct);
+                if (liveFunds.AvailableCash > 0)
+                {
+                    account.AvailableFunds = liveFunds.AvailableCash;
+                }
+
                 var livePositions = await zerodhaAdapter.Positions.GetPositionsAsync(account.BrokerConnection, account, ct);
                 if (livePositions.Count > 0)
                 {
@@ -556,6 +580,50 @@ public class AiAdvisorController(
                             existingPos.AverageBuyPrice = lp.AverageBuyPrice;
                             if (lp.CurrentPrice > 0) existingPos.CurrentPrice = lp.CurrentPrice;
                         }
+                    }
+                    await dbContext.SaveChangesAsync(ct);
+                }
+
+                var liveOrders = await zerodhaAdapter.Orders.GetOrderBookAsync(account.BrokerConnection, account, ct);
+                if (liveOrders.Count > 0)
+                {
+                    foreach (var lo in liveOrders)
+                    {
+                        var exists = await dbContext.TradingOrders.AnyAsync(
+                            o => o.TradingAccountId == account.Id && o.BrokerOrderId == lo.BrokerOrderId, ct);
+                        if (exists) continue;
+
+                        var inst = await dbContext.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == lo.TradingSymbol, ct);
+                        if (inst == null)
+                        {
+                            inst = new Instrument
+                            {
+                                TradingSymbol = lo.TradingSymbol,
+                                Exchange = "NSE",
+                                CompanyName = lo.TradingSymbol,
+                                LotSize = 1,
+                                TickSize = 0.05m
+                            };
+                            dbContext.Instruments.Add(inst);
+                            await dbContext.SaveChangesAsync(ct);
+                        }
+
+                        dbContext.TradingOrders.Add(new TradingOrder
+                        {
+                            UserId = account.UserId,
+                            TradingAccountId = account.Id,
+                            InstrumentId = inst.Id,
+                            Side = lo.Side,
+                            OrderType = lo.OrderType,
+                            ProductType = lo.ProductType,
+                            Quantity = lo.Quantity,
+                            FilledQuantity = lo.FilledQuantity,
+                            Price = lo.Price > 0 ? lo.Price : lo.AveragePrice,
+                            AveragePrice = lo.AveragePrice,
+                            Status = lo.Status,
+                            BrokerOrderId = lo.BrokerOrderId,
+                            SubmittedAtUtc = lo.CreatedAtUtc
+                        });
                     }
                     await dbContext.SaveChangesAsync(ct);
                 }

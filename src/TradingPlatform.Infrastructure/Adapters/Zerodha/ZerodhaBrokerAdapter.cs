@@ -283,7 +283,12 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
             // 1. Fetch CNC Holdings (existing delivery portfolio)
             using var holdReq = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/portfolio/holdings", connection);
             var holdRes = await _httpClient.SendAsync(holdReq, cancellationToken);
-            if (holdRes.IsSuccessStatusCode)
+            if (!holdRes.IsSuccessStatusCode)
+            {
+                var err = await holdRes.Content.ReadAsStringAsync(cancellationToken);
+                _logger.LogWarning("Zerodha /portfolio/holdings returned {Status}: {Error}", holdRes.StatusCode, err);
+            }
+            else
             {
                 var holdBody = await holdRes.Content.ReadFromJsonAsync<KiteHoldingsResponse>(cancellationToken: cancellationToken);
                 if (holdBody?.Data != null)
