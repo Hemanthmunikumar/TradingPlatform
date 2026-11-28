@@ -21,8 +21,9 @@ interface MockApproval {
 export const ApprovalsPage: React.FC = () => {
   const [approvals, setApprovals] = useState<MockApproval[]>([]);
   const [demoActive, setDemoActive] = useState(false);
-  const [configuredDuration, setConfiguredDuration] = useState<number>(2);
-  const [remainingTime, setRemainingTime] = useState(2.0);
+  const [configuredDuration, setConfiguredDuration] = useState<number>(60);
+  const [remainingTime, setRemainingTime] = useState(60.0);
+  const [isLiveMode, setIsLiveMode] = useState(false);
   const timerRef = useRef<any>(null);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export const ApprovalsPage: React.FC = () => {
         const res = await apiClient.get<ApiResponse<TradingAccountDto[]>>('/trading-accounts');
         if (res.data.success && res.data.data) {
           const active = res.data.data.find(a => a.isActive) || res.data.data[0];
+          setIsLiveMode(active?.tradingMode === 'Live');
           if (active?.configuration?.approvalDurationSeconds) {
             setConfiguredDuration(active.configuration.approvalDurationSeconds);
             setRemainingTime(active.configuration.approvalDurationSeconds);
@@ -128,13 +130,15 @@ export const ApprovalsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={triggerMockBuySignal}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-amber-500/20 transition"
-        >
-          <Clock size={16} />
-          Simulate {configuredDuration}s BUY Signal Alert
-        </button>
+        {!isLiveMode && (
+          <button
+            onClick={triggerMockBuySignal}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-amber-500/20 transition"
+          >
+            <Clock size={16} />
+            Simulate {configuredDuration}s BUY Signal Alert
+          </button>
+        )}
       </div>
 
       {/* Floating Demo Toast */}

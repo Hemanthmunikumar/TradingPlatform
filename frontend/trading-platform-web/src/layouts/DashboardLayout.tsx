@@ -23,19 +23,24 @@ export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [tradingMode, setTradingMode] = useState<'Paper' | 'Live' | 'None'>('Paper');
+  const [tradingMode, setTradingMode] = useState<'Paper' | 'Live' | 'LiveExpired' | 'None'>('Paper');
   const [isKillSwitchActive] = useState(false);
 
   const syncHeaderTradingMode = useCallback(async () => {
     try {
       const res = await apiClient.get<ApiResponse<BrokerConnectionDto[]>>('/brokers/connections');
-      const activeConns = (res.data.data || []).filter((c) => c.isActive && c.isAuthenticated);
-      if (activeConns.length === 0) {
+      const enabledConns = (res.data.data || []).filter((c) => c.isActive);
+      const authConns = enabledConns.filter((c) => c.isAuthenticated);
+      if (enabledConns.length === 0) {
         setTradingMode('None');
-      } else if (activeConns.some((c) => c.tradingMode === 'Live')) {
+      } else if (authConns.some((c) => c.tradingMode === 'Live')) {
         setTradingMode('Live');
-      } else {
+      } else if (enabledConns.some((c) => c.tradingMode === 'Live' && !c.isAuthenticated)) {
+        setTradingMode('LiveExpired');
+      } else if (authConns.length > 0) {
         setTradingMode('Paper');
+      } else {
+        setTradingMode('None');
       }
     } catch {
       // Keep current state on transient failure
@@ -86,18 +91,22 @@ export const DashboardLayout: React.FC = () => {
         <div className="flex items-center gap-2.5">
           {/* Trading Mode Badge (Clickable link to Brokers/Settings) */}
           <Link 
-            to={tradingMode === 'None' ? '/brokers' : '/settings'}
+            to={tradingMode === 'None' || tradingMode === 'LiveExpired' ? '/brokers' : '/settings'}
             title="Click to manage Broker Mode or Risk Settings"
             className={`px-2.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase flex items-center gap-1.5 transition hover:scale-105 cursor-pointer ${
               tradingMode === 'Live'
                 ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse hover:bg-rose-500/20'
-                : tradingMode === 'None'
-                  ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
-                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
+                : tradingMode === 'LiveExpired'
+                  ? 'bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20'
+                  : tradingMode === 'None'
+                    ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${tradingMode === 'Live' ? 'bg-rose-400' : tradingMode === 'None' ? 'bg-slate-500' : 'bg-emerald-400'}`} />
-            {tradingMode === 'None' ? 'No Active Broker' : `${tradingMode} Trading`}
+            <span className={`w-2 h-2 rounded-full ${
+              tradingMode === 'Live' ? 'bg-rose-400' : tradingMode === 'LiveExpired' ? 'bg-amber-400' : tradingMode === 'None' ? 'bg-slate-500' : 'bg-emerald-400'
+            }`} />
+            {tradingMode === 'None' ? 'No Active Broker' : tradingMode === 'LiveExpired' ? 'Live (Re-Auth Needed)' : `${tradingMode} Trading`}
           </Link>
 
           {/* Kill Switch Indicator */}

@@ -449,16 +449,18 @@ export const AiMarketExpertPage: React.FC = () => {
             {isSyncingBroker ? 'Syncing Zerodha...' : 'Sync Broker (Orders & Holdings)'}
           </button>
 
-          {/* 1-Click Interactive Test Trial Button */}
-          <button
-            onClick={() => handleSimulateBuy('TATAMOTORS')}
-            disabled={isSimulating}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 transition active:scale-95"
-            title={`Triggers instant ${approvalDurationSeconds}-second BUY rejection window countdown`}
-          >
-            <Zap size={15} className={isSimulating ? 'animate-spin' : ''} />
-            ⚡ Test {approvalDurationSeconds}s BUY Window
-          </button>
+          {/* 1-Click Interactive Test Trial Button (Paper / Mock only) */}
+          {brokerSyncData?.tradingMode !== 'Live' && (
+            <button
+              onClick={() => handleSimulateBuy('TATAMOTORS')}
+              disabled={isSimulating}
+              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-lg shadow-emerald-500/20 transition active:scale-95"
+              title={`Triggers instant ${approvalDurationSeconds}-second BUY rejection window countdown`}
+            >
+              <Zap size={15} className={isSimulating ? 'animate-spin' : ''} />
+              ⚡ Test {approvalDurationSeconds}s BUY Window
+            </button>
+          )}
         </div>
       </div>
 

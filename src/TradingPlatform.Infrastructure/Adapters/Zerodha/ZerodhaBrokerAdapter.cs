@@ -78,13 +78,20 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
             if (res.IsSuccessStatusCode)
             {
                 var body = await res.Content.ReadFromJsonAsync<KiteTokenResponse>();
+                var accessToken = body?.Data?.AccessToken;
+                if (string.IsNullOrWhiteSpace(accessToken))
+                {
+                    _logger.LogWarning("Zerodha /session/token returned 200 but access_token was empty.");
+                    return new TokenExchangeResult(string.Empty, null, DateTime.UtcNow, false, "Zerodha did not return a valid access_token.");
+                }
+
                 // Zerodha Kite invalidates all access tokens daily at 06:00 IST (00:30 UTC)
                 var nowUtc = DateTime.UtcNow;
                 var todayExpiryUtc = nowUtc.Date.AddMinutes(30); // 00:30 UTC = 06:00 IST
                 var nextExpiryUtc = nowUtc < todayExpiryUtc ? todayExpiryUtc : todayExpiryUtc.AddDays(1);
 
                 return new TokenExchangeResult(
-                    AccessToken: body?.Data?.AccessToken ?? string.Empty,
+                    AccessToken: accessToken,
                     RefreshToken: null,
                     ExpiresAtUtc: nextExpiryUtc,
                     Success: true,
@@ -403,8 +410,10 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
         return req;
     }
 
-    private record KiteTokenResponse(KiteData? Data);
-    private record KiteData(string? AccessToken);
+    private record KiteTokenResponse(
+        [property: System.Text.Json.Serialization.JsonPropertyName("data")] KiteData? Data);
+    private record KiteData(
+        [property: System.Text.Json.Serialization.JsonPropertyName("access_token")] string? AccessToken);
     private record KiteOrderPlaceResponse(KiteOrderIdData? Data);
     private record KiteOrderIdData(string? OrderId);
     private record KiteOrdersResponse(List<KiteOrderItem>? Data);

@@ -618,7 +618,7 @@ public class GetTradingAccountsHandler(
         {
             decimal availableFunds = acc.AvailableFunds;
 
-            // Fetch live funds from adapter if connection is active
+            // Fetch live funds from adapter if connection is active and authenticated
             if (acc.BrokerConnection.IsAuthenticated && acc.BrokerConnection.IsActive)
             {
                 try
@@ -627,6 +627,17 @@ public class GetTradingAccountsHandler(
                     var liveFunds = await adapter.Funds.GetFundsAsync(acc.BrokerConnection, acc, cancellationToken);
                     availableFunds = liveFunds.AvailableCash;
                     acc.AvailableFunds = availableFunds;
+
+                    if (acc.BrokerConnection.BrokerProvider.Code != BrokerCode.Mock)
+                    {
+                        var liveTotal = liveFunds.TotalCapital > 0 ? liveFunds.TotalCapital : liveFunds.AvailableCash;
+                        acc.AllocatedCapital = liveTotal;
+                        if (acc.AccountId == "PENDING_AUTH" || string.IsNullOrWhiteSpace(acc.AccountId))
+                        {
+                            acc.AccountId = $"{acc.BrokerConnection.BrokerProvider.Code.ToString().ToUpperInvariant()}-LIVE";
+                        }
+                    }
+                    await dbContext.SaveChangesAsync(cancellationToken);
                 }
                 catch
                 {
