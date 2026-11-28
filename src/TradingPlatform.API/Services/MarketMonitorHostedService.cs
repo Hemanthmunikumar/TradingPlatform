@@ -102,8 +102,32 @@ public class MarketMonitorHostedService(
                 foreach (var sig in scan.Signals.Where(s => s.Status == "ACTIVE_BUY_AT_21EMA"))
                 {
                     var key = $"{today:yyyyMMdd}:{sig.Symbol}";
-                    if (!_alertedToday.Add(key))
+                    if (_alertedToday.Contains(key))
                         continue;
+
+                    // Stage 2: News & Regulatory Red-Flag Gate (india-news)
+                    var news = await scanner.GetStockNewsAsync(sig.Symbol, 24, stoppingToken);
+                    if (news.HasRedFlag)
+                    {
+                        _alertedToday.Add(key);
+                        logger.LogWarning("MarketMonitor skipped {Symbol} due to news red-flag: {Reason}", sig.Symbol, news.RedFlagReason);
+                        continue;
+                    }
+
+                    // Stage 3: 5m Candle Close Confirmation Gate (india-entry)
+                    var entryCheck = await scanner.CheckEntryConfirmationAsync(sig.Symbol, sig.Ema21, 1.2m, stoppingToken);
+                    if (string.Equals(entryCheck.Status, "waiting", StringComparison.OrdinalIgnoreCase))
+                    {
+                        logger.LogInformation("MarketMonitor waiting for 5m candle close above 21-EMA for {Symbol}", sig.Symbol);
+                        continue;
+                    }
+
+                    _alertedToday.Add(key);
+                    var topHeadline = news.Items.FirstOrDefault()?.Title;
+                    var newsTag = !string.IsNullOrWhiteSpace(topHeadline) ? $" | News: {topHeadline}" : $" | News: {sig.NewsSentiment}";
+                    var entryTag = string.Equals(entryCheck.Status, "triggered", StringComparison.OrdinalIgnoreCase)
+                        ? "5m Candle Confirmed"
+                        : "21-EMA Pullback";
 
                     var inst = await db.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == sig.Symbol, stoppingToken);
                     if (inst == null)
@@ -132,12 +156,12 @@ public class MarketMonitorHostedService(
                         StopLoss: sig.StopLoss,
                         Target: sig.TargetPrice,
                         RiskAmount: Math.Round(Math.Abs(sig.SpotPrice - sig.StopLoss) * 10m, 2),
-                        Reason: $"Live NSE Monitor: {sig.Symbol} (+{sig.GainPercent}%) touched 21-EMA (₹{sig.Ema21}). ATM: {sig.SuggestedAtmOption}, News: {sig.NewsSentiment}.",
+                        Reason: $"Live NSE Monitor ({entryTag}): {sig.Symbol} (+{sig.GainPercent}%) near 21-EMA (₹{sig.Ema21}). ATM: {sig.SuggestedAtmOption}{newsTag}",
                         ApprovalDurationSeconds: duration
                     ), stoppingToken);
 
-                    logger.LogInformation("MarketMonitor raised {Duration}s BUY alert for {Symbol} (AutoExecute={Auto})",
-                        duration, sig.Symbol, activeAccount.Configuration?.AutoExecuteOnTimeout ?? false);
+                    logger.LogInformation("MarketMonitor raised {Duration}s BUY alert for {Symbol} (AutoExecute={Auto}, Entry={EntryStatus})",
+                        duration, sig.Symbol, activeAccount.Configuration?.AutoExecuteOnTimeout ?? false, entryCheck.Status);
                 }
             }
             catch (OperationCanceledException)

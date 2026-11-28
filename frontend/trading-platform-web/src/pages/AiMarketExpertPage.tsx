@@ -78,6 +78,38 @@ export const AiMarketExpertPage: React.FC = () => {
   const [insiderDeals, setInsiderDeals] = useState<IndiaInsiderDealDto[]>([]);
   const [analyses, setAnalyses] = useState<AiAnalysisResultDto[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
+
+  // 4-Stage Skill Inspector Modal State
+  const [inspectSymbol, setInspectSymbol] = useState<string | null>(null);
+  const [isInspectLoading, setIsInspectLoading] = useState(false);
+  const [inspectData, setInspectData] = useState<{
+    news?: any;
+    analyst?: any;
+    entry?: any;
+    timemachine?: any;
+  } | null>(null);
+
+  const handleInspectSkills = async (symbol: string, entry: number, stop: number, target: number, level?: number) => {
+    setInspectSymbol(symbol);
+    setIsInspectLoading(true);
+    setInspectData(null);
+    try {
+      const [newsRes, analystRes, entryRes, tmRes] = await Promise.allSettled([
+        apiClient.get<ApiResponse<any>>(`/ai/skills/news?symbol=${encodeURIComponent(symbol)}&hours=48`),
+        apiClient.get<ApiResponse<any>>(`/ai/skills/analyst?symbol=${encodeURIComponent(symbol)}&quarters=2`),
+        apiClient.get<ApiResponse<any>>(`/ai/skills/entry-check?symbol=${encodeURIComponent(symbol)}${level ? `&level=${level}` : ''}`),
+        apiClient.get<ApiResponse<any>>(`/ai/skills/timemachine?symbol=${encodeURIComponent(symbol)}&entry=${entry}&stop=${stop}&target=${target}`),
+      ]);
+      setInspectData({
+        news: newsRes.status === 'fulfilled' ? newsRes.value.data?.data : null,
+        analyst: analystRes.status === 'fulfilled' ? analystRes.value.data?.data : null,
+        entry: entryRes.status === 'fulfilled' ? entryRes.value.data?.data : null,
+        timemachine: tmRes.status === 'fulfilled' ? tmRes.value.data?.data : null,
+      });
+    } finally {
+      setIsInspectLoading(false);
+    }
+  };
   const [specialMonitorItems, setSpecialMonitorItems] = useState<SpecialMonitorItemDto[]>([]);
   
   // Interactive UI States
@@ -1381,19 +1413,28 @@ export const AiMarketExpertPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* 1-Click Trigger */}
-                  <div className="pt-2 flex items-center justify-between border-t border-slate-800">
+                  {/* 1-Click Trigger & 4-Stage Skill Check */}
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
                     <span className="text-[11px] text-slate-500">
                       Routes via {approvalDurationSeconds}s countdown gate
                     </span>
-                    <button
-                      onClick={() => handleTriggerPreMarketBuy(sig)}
-                      disabled={isSimulating}
-                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition"
-                    >
-                      <Zap size={13} />
-                      Trigger Buy (ATM Option + Equity)
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleInspectSkills(sig.symbol, sig.spotPrice, sig.stopLoss, sig.targetPrice, sig.ema21)}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 rounded-lg text-xs font-semibold transition"
+                      >
+                        <Search size={12} />
+                        4-Stage Check
+                      </button>
+                      <button
+                        onClick={() => handleTriggerPreMarketBuy(sig)}
+                        disabled={isSimulating}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition"
+                      >
+                        <Zap size={13} />
+                        Trigger Buy (ATM Option + Equity)
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))
@@ -1715,6 +1756,135 @@ export const AiMarketExpertPage: React.FC = () => {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4-STAGE SKILL INSPECTOR MODAL */}
+      {inspectSymbol && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Sparkles size={18} className="text-sky-400" />
+                  4-Stage Skill Analysis: {inspectSymbol}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  india-news • india-analyst (XBRL) • india-entry (5m) • india-timemachine (60d)
+                </p>
+              </div>
+              <button
+                onClick={() => setInspectSymbol(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {isInspectLoading ? (
+              <div className="py-12 text-center text-slate-400 text-sm">
+                Running NSE News, Quarterly XBRL, 5m Entry & 60-Session Time Machine...
+              </div>
+            ) : (
+              <div className="space-y-4 text-xs">
+                {/* Stage 2: News */}
+                <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sky-300">1. NSE Announcements & News (india-news)</span>
+                    {inspectData?.news?.hasRedFlag ? (
+                      <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-semibold">
+                        Red Flag Detected
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold">
+                        No Red Flags
+                      </span>
+                    )}
+                  </div>
+                  {(inspectData?.news?.items?.length ?? 0) > 0 ? (
+                    <ul className="space-y-1 text-slate-300">
+                      {inspectData?.news?.items.slice(0, 3).map((item: any, idx: number) => (
+                        <li key={idx} className="truncate">• [{item.source}] {item.title}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-500">No recent breaking items in last 48h.</p>
+                  )}
+                </div>
+
+                {/* Stage 2b: Analyst */}
+                <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-indigo-300">2. Quarterly XBRL Results (india-analyst)</span>
+                    {inspectData?.analyst?.resultsImminent && (
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-semibold">
+                        Results Imminent
+                      </span>
+                    )}
+                  </div>
+                  {(inspectData?.analyst?.changes?.length ?? 0) > 0 ? (
+                    <ul className="space-y-1 text-slate-300">
+                      {inspectData?.analyst?.changes.slice(0, 3).map((c: string, idx: number) => (
+                        <li key={idx}>• {c}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-slate-500">Quarterly XBRL data unavailable for this symbol.</p>
+                  )}
+                  {inspectData?.analyst?.nextResultsNote && (
+                    <p className="text-slate-400 italic">{inspectData.analyst.nextResultsNote}</p>
+                  )}
+                </div>
+
+                {/* Stage 3: Entry */}
+                <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-300">3. 5m Candle Confirmation (india-entry)</span>
+                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-200 font-mono uppercase">
+                      {inspectData?.entry?.status || 'no-data'}
+                    </span>
+                  </div>
+                  <p className="text-slate-300">{inspectData?.entry?.reason || 'Market status checked.'}</p>
+                  <p className="text-slate-500">
+                    Session Close: {inspectData?.entry?.sessionCloseTime || '15:15'} IST • MIS Square-off: {inspectData?.entry?.squareOffTime || '15:12'} IST
+                  </p>
+                </div>
+
+                {/* Stage 4: Time Machine */}
+                <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-300">4. 60-Session Time Machine (india-timemachine)</span>
+                    <span className="text-slate-400">{inspectData?.timemachine?.replays || 0} replays</span>
+                  </div>
+                  {(inspectData?.timemachine?.replays ?? 0) > 0 ? (
+                    <>
+                      <div className="grid grid-cols-4 gap-2 text-center py-1">
+                        <div className="bg-slate-900 rounded p-2">
+                          <div className="text-slate-400">Target 1st</div>
+                          <div className="text-emerald-400 font-bold">{inspectData?.timemachine?.targetFirstPercent}%</div>
+                        </div>
+                        <div className="bg-slate-900 rounded p-2">
+                          <div className="text-slate-400">Stop 1st</div>
+                          <div className="text-rose-400 font-bold">{inspectData?.timemachine?.stopFirstPercent}%</div>
+                        </div>
+                        <div className="bg-slate-900 rounded p-2">
+                          <div className="text-slate-400">Avg R (Gross)</div>
+                          <div className="text-white font-bold">{inspectData?.timemachine?.avgRGross}R</div>
+                        </div>
+                        <div className="bg-slate-900 rounded p-2">
+                          <div className="text-slate-400">Avg R (Net)</div>
+                          <div className="text-sky-400 font-bold">{inspectData?.timemachine?.avgRNet}R</div>
+                        </div>
+                      </div>
+                      <p className="text-slate-300">{inspectData?.timemachine?.verdict}</p>
+                    </>
+                  ) : (
+                    <p className="text-slate-500">{inspectData?.timemachine?.verdict || 'Replay unavailable.'}</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

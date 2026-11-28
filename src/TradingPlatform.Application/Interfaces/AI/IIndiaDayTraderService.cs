@@ -64,6 +64,76 @@ public record IndiaInsiderDealDto(
     bool SameDayBothSides
 );
 
+public record IndiaNewsItemDto(
+    string Source,
+    string Kind,
+    string Symbol,
+    string Title,
+    string Publisher,
+    string Link,
+    string TimeIst,
+    IReadOnlyList<string> Tags,
+    bool IsRedFlag
+);
+
+public record IndiaNewsResponse(
+    string Symbol,
+    decimal? Price,
+    decimal? ChangePercent,
+    bool HasRedFlag,
+    string RedFlagReason,
+    IReadOnlyList<IndiaNewsItemDto> Items
+);
+
+public record IndiaQuarterlyResultDto(
+    string Fiscal,
+    string EndDate,
+    decimal? RevenueCrore,
+    decimal? NetProfitCrore,
+    decimal? RevenueYoyPercent,
+    decimal? NetProfitYoyPercent,
+    decimal? EbitdaMarginPercent,
+    decimal? NetMarginPercent,
+    decimal? EpsDiluted
+);
+
+public record IndiaAnalystResultDto(
+    string Symbol,
+    string NextResultsNote,
+    bool ResultsImminent,
+    IReadOnlyList<string> Changes,
+    IReadOnlyList<IndiaQuarterlyResultDto> Quarters
+);
+
+public record IndiaEntryCheckDto(
+    string Symbol,
+    string Status,
+    string Phase,
+    string Reason,
+    decimal? Level,
+    decimal? LastClose,
+    decimal? VolumeRatio,
+    string SquareOffTime,
+    string SessionCloseTime
+);
+
+public record IndiaTimeMachineDto(
+    string Symbol,
+    string Date,
+    decimal Entry,
+    decimal Stop,
+    decimal Target,
+    int Replays,
+    decimal TargetFirstPercent,
+    decimal StopFirstPercent,
+    decimal NeitherPercent,
+    decimal GreenPercent,
+    decimal AvgRGross,
+    decimal AvgRNet,
+    decimal ChargesRoundTrip,
+    string Verdict
+);
+
 public interface IIndiaDayTraderService
 {
     Task<PreMarketScanResponse> ScanPreMarket21EmaAsync(
@@ -82,5 +152,29 @@ public interface IIndiaDayTraderService
     Task<IReadOnlyList<IndiaInsiderDealDto>> GetInsiderDealsAsync(
         int limit = 20,
         string? symbol = null,
+        CancellationToken ct = default);
+
+    Task<IndiaNewsResponse> GetStockNewsAsync(
+        string symbol,
+        int hours = 48,
+        CancellationToken ct = default);
+
+    Task<IndiaAnalystResultDto> GetQuarterlyResultsAsync(
+        string symbol,
+        int quarters = 2,
+        CancellationToken ct = default);
+
+    Task<IndiaEntryCheckDto> CheckEntryConfirmationAsync(
+        string symbol,
+        decimal? level = null,
+        decimal minVolumeX = 1.2m,
+        CancellationToken ct = default);
+
+    Task<IndiaTimeMachineDto> RunTimeMachineAsync(
+        string symbol,
+        decimal entry,
+        decimal stop,
+        decimal target,
+        string? entryTime = null,
         CancellationToken ct = default);
 }

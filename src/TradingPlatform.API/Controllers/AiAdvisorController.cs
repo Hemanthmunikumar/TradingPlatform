@@ -443,6 +443,56 @@ public class AiAdvisorController(
         return Ok(ApiResponse<IReadOnlyList<IndiaInsiderDealDto>>.Ok(result, "NSE bulk and block deals retrieved"));
     }
 
+    [HttpGet("skills/news")]
+    [ProducesResponseType(typeof(ApiResponse<IndiaNewsResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStockNews([FromQuery] string symbol, [FromQuery] int hours = 48, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return BadRequest(ApiResponse<IndiaNewsResponse>.Fail("Symbol is required"));
+
+        var result = await indiaDayTraderService.GetStockNewsAsync(symbol, hours, ct);
+        return Ok(ApiResponse<IndiaNewsResponse>.Ok(result, $"NSE news & announcements retrieved for {result.Symbol}"));
+    }
+
+    [HttpGet("skills/analyst")]
+    [ProducesResponseType(typeof(ApiResponse<IndiaAnalystResultDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetQuarterlyResults([FromQuery] string symbol, [FromQuery] int quarters = 2, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return BadRequest(ApiResponse<IndiaAnalystResultDto>.Fail("Symbol is required"));
+
+        var result = await indiaDayTraderService.GetQuarterlyResultsAsync(symbol, quarters, ct);
+        return Ok(ApiResponse<IndiaAnalystResultDto>.Ok(result, $"Quarterly XBRL financials retrieved for {result.Symbol}"));
+    }
+
+    [HttpGet("skills/entry-check")]
+    [ProducesResponseType(typeof(ApiResponse<IndiaEntryCheckDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CheckEntryConfirmation([FromQuery] string symbol, [FromQuery] decimal? level = null, [FromQuery] decimal minVolumeX = 1.2m, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol))
+            return BadRequest(ApiResponse<IndiaEntryCheckDto>.Fail("Symbol is required"));
+
+        var result = await indiaDayTraderService.CheckEntryConfirmationAsync(symbol, level, minVolumeX, ct);
+        return Ok(ApiResponse<IndiaEntryCheckDto>.Ok(result, $"5m entry confirmation checked for {result.Symbol}"));
+    }
+
+    [HttpGet("skills/timemachine")]
+    [ProducesResponseType(typeof(ApiResponse<IndiaTimeMachineDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> RunTimeMachine(
+        [FromQuery] string symbol,
+        [FromQuery] decimal entry,
+        [FromQuery] decimal stop,
+        [FromQuery] decimal target,
+        [FromQuery] string? entryTime = null,
+        CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(symbol) || entry <= 0 || stop <= 0 || target <= 0)
+            return BadRequest(ApiResponse<IndiaTimeMachineDto>.Fail("Valid symbol, entry, stop, and target are required"));
+
+        var result = await indiaDayTraderService.RunTimeMachineAsync(symbol, entry, stop, target, entryTime, ct);
+        return Ok(ApiResponse<IndiaTimeMachineDto>.Ok(result, $"60-session replay complete for {result.Symbol}"));
+    }
+
     [HttpPost("trigger-premarket-order")]
     [ProducesResponseType(typeof(ApiResponse<PendingTradeApprovalDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> TriggerPreMarketOrder([FromBody] TriggerPreMarketOrderRequest request, CancellationToken ct)
