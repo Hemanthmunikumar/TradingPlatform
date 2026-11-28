@@ -54,6 +54,7 @@ public class OrderService(
             Id = Guid.NewGuid(),
             UserId = account.UserId,
             TradingAccountId = request.TradingAccountId,
+            TradingMode = account.TradingMode,
             InstrumentId = request.InstrumentId,
             StrategyVersionId = request.StrategyVersionId,
             PendingTradeApprovalId = request.PendingTradeApprovalId,
@@ -186,6 +187,7 @@ public class OrderService(
             TradingOrderId = order.Id,
             TradingOrder = order,
             TradingAccountId = order.TradingAccountId,
+            TradingMode = order.TradingMode,
             InstrumentId = order.InstrumentId,
             Instrument = order.Instrument,
             BrokerTradeId = brokerTradeId ?? $"TRD-{Guid.NewGuid():N}"[..16],
@@ -287,7 +289,9 @@ public class OrderService(
             .Include(o => o.Instrument)
             .Include(o => o.Events)
             .Include(o => o.Executions)
-            .Where(o => o.TradingAccount.IsActive && o.TradingAccount.BrokerConnection.IsActive)
+            .Where(o => o.TradingAccount.IsActive
+                && o.TradingAccount.BrokerConnection.IsActive
+                && o.TradingMode == o.TradingAccount.TradingMode)
             .AsQueryable();
 
         if (filter.TradingAccountId.HasValue)

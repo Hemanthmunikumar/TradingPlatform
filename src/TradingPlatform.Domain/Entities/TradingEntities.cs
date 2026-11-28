@@ -37,6 +37,7 @@ public class PendingTradeApproval : BaseEntity, IAggregateRoot, IMustHaveTenant
 
     public Guid TradingAccountId { get; set; }
     public TradingAccount TradingAccount { get; set; } = null!;
+    public TradingMode TradingMode { get; set; } = TradingMode.Paper;
 
     public Guid? TradingSignalId { get; set; }
     public TradingSignal? TradingSignal { get; set; }
@@ -70,6 +71,7 @@ public class TradingOrder : BaseEntity, IAggregateRoot, IMustHaveTenant
 
     public Guid TradingAccountId { get; set; }
     public TradingAccount TradingAccount { get; set; } = null!;
+    public TradingMode TradingMode { get; set; } = TradingMode.Paper;
 
     public Guid? PendingTradeApprovalId { get; set; }
     public PendingTradeApproval? PendingTradeApproval { get; set; }
@@ -121,6 +123,7 @@ public class TradeExecution : BaseEntity, IMustHaveTenant
 
     public Guid TradingAccountId { get; set; }
     public TradingAccount TradingAccount { get; set; } = null!;
+    public TradingMode TradingMode { get; set; } = TradingMode.Paper;
 
     public Guid InstrumentId { get; set; }
     public Instrument Instrument { get; set; } = null!;
@@ -141,6 +144,7 @@ public class Position : BaseEntity, IAggregateRoot, IMustHaveTenant
 
     public Guid TradingAccountId { get; set; }
     public TradingAccount TradingAccount { get; set; } = null!;
+    public TradingMode TradingMode { get; set; } = TradingMode.Paper;
 
     public Guid InstrumentId { get; set; }
     public Instrument Instrument { get; set; } = null!;

@@ -559,13 +559,14 @@ public class AiAdvisorController(
                         }
 
                         var existingPos = await dbContext.Positions.FirstOrDefaultAsync(
-                            p => p.TradingAccountId == account.Id && p.InstrumentId == inst.Id && p.IsOpen && p.ProductType == lp.ProductType, ct);
+                            p => p.TradingAccountId == account.Id && p.TradingMode == account.TradingMode && p.InstrumentId == inst.Id && p.IsOpen && p.ProductType == lp.ProductType, ct);
                         if (existingPos == null)
                         {
                             dbContext.Positions.Add(new Position
                             {
                                 UserId = account.UserId,
                                 TradingAccountId = account.Id,
+                                TradingMode = account.TradingMode,
                                 InstrumentId = inst.Id,
                                 Quantity = lp.Quantity,
                                 AverageBuyPrice = lp.AverageBuyPrice,
@@ -612,6 +613,7 @@ public class AiAdvisorController(
                         {
                             UserId = account.UserId,
                             TradingAccountId = account.Id,
+                            TradingMode = account.TradingMode,
                             InstrumentId = inst.Id,
                             Side = lo.Side,
                             OrderType = lo.OrderType,
@@ -634,10 +636,10 @@ public class AiAdvisorController(
             }
         }
 
-        // Fetch open positions
+        // Fetch open positions for the active mode (Paper vs Live)
         var openPositions = await dbContext.Positions
             .Include(p => p.Instrument)
-            .Where(p => p.TradingAccountId == account.Id && p.IsOpen)
+            .Where(p => p.TradingAccountId == account.Id && p.TradingMode == account.TradingMode && p.IsOpen)
             .ToListAsync(ct);
 
         // If in paper mode on Mock Simulator and no positions yet, seed 3 paper holdings
@@ -671,6 +673,7 @@ public class AiAdvisorController(
                 {
                     UserId = account.UserId,
                     TradingAccountId = account.Id,
+                    TradingMode = account.TradingMode,
                     InstrumentId = inst.Id,
                     Quantity = qty,
                     AverageBuyPrice = avgPrice,
@@ -685,6 +688,7 @@ public class AiAdvisorController(
                 {
                     UserId = account.UserId,
                     TradingAccountId = account.Id,
+                    TradingMode = account.TradingMode,
                     InstrumentId = inst.Id,
                     Side = OrderSide.Buy,
                     OrderType = OrderType.Market,
@@ -705,7 +709,7 @@ public class AiAdvisorController(
             // Re-fetch positions
             openPositions = await dbContext.Positions
                 .Include(p => p.Instrument)
-                .Where(p => p.TradingAccountId == account.Id && p.IsOpen)
+                .Where(p => p.TradingAccountId == account.Id && p.TradingMode == account.TradingMode && p.IsOpen)
                 .ToListAsync(ct);
         }
 
@@ -779,10 +783,10 @@ public class AiAdvisorController(
             ));
         }
 
-        // Fetch recent orders
+        // Fetch recent orders for the active mode (Paper vs Live)
         var dbOrders = await dbContext.TradingOrders
             .Include(o => o.Instrument)
-            .Where(o => o.TradingAccountId == account.Id)
+            .Where(o => o.TradingAccountId == account.Id && o.TradingMode == account.TradingMode)
             .OrderByDescending(o => o.CreatedAtUtc)
             .Take(25)
             .ToListAsync(ct);

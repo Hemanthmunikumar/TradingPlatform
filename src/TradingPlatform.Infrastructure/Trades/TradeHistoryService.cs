@@ -17,7 +17,9 @@ public class TradeHistoryService(TradingDbContext dbContext) : ITradeHistoryServ
         var query = dbContext.TradeExecutions
             .Include(t => t.Instrument)
             .Include(t => t.TradingOrder)
-            .Where(t => t.TradingAccount.IsActive && t.TradingAccount.BrokerConnection.IsActive)
+            .Where(t => t.TradingAccount.IsActive
+                && t.TradingAccount.BrokerConnection.IsActive
+                && t.TradingMode == t.TradingAccount.TradingMode)
             .AsQueryable();
 
         if (filter.TradingAccountId.HasValue)

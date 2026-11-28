@@ -33,7 +33,7 @@ public class TradeApprovalService(
 
         var duration = request.ApprovalDurationSeconds > 0
             ? request.ApprovalDurationSeconds
-            : (account.Configuration?.ApprovalDurationSeconds ?? 2);
+            : (account.Configuration?.ApprovalDurationSeconds ?? 60);
 
         var deadline = DateTime.UtcNow.AddSeconds(duration);
 
@@ -42,6 +42,7 @@ public class TradeApprovalService(
             Id = Guid.NewGuid(),
             UserId = account.UserId,
             TradingAccountId = request.TradingAccountId,
+            TradingMode = account.TradingMode,
             TradingSignalId = request.TradingSignalId,
             Symbol = request.Symbol,
             CompanyName = request.CompanyName,
@@ -123,7 +124,8 @@ public class TradeApprovalService(
             .Where(p => p.Status == ApprovalStatus.Pending
                 && p.ApprovalDeadlineUtc > now
                 && p.TradingAccount.IsActive
-                && p.TradingAccount.BrokerConnection.IsActive);
+                && p.TradingAccount.BrokerConnection.IsActive
+                && p.TradingMode == p.TradingAccount.TradingMode);
 
         if (tradingAccountId.HasValue)
         {
@@ -140,7 +142,9 @@ public class TradeApprovalService(
     public async Task<IReadOnlyList<PendingTradeApprovalDto>> GetApprovalHistoryAsync(Guid? tradingAccountId = null, int page = 1, int pageSize = 50, CancellationToken ct = default)
     {
         var query = dbContext.PendingTradeApprovals
-            .Where(p => p.TradingAccount.IsActive && p.TradingAccount.BrokerConnection.IsActive);
+            .Where(p => p.TradingAccount.IsActive
+                && p.TradingAccount.BrokerConnection.IsActive
+                && p.TradingMode == p.TradingAccount.TradingMode);
 
         if (tradingAccountId.HasValue)
         {

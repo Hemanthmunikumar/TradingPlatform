@@ -428,7 +428,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             Id = new Guid("10000000-0000-0000-0000-000000000001"),
                             ApiBaseUrl = "http://localhost:5000/mock-broker",
                             Code = 1,
-                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 568, DateTimeKind.Utc).AddTicks(9161),
+                            CreatedAtUtc = new DateTime(2026, 11, 28, 2, 13, 31, 16, DateTimeKind.Utc).AddTicks(6446),
                             IsActive = true,
                             Name = "Mock Simulator"
                         },
@@ -438,7 +438,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             ApiBaseUrl = "https://api.upstox.com/v2",
                             AuthorizationUrl = "https://api.upstox.com/v2/login/authorization/dialog",
                             Code = 2,
-                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 570, DateTimeKind.Utc).AddTicks(2576),
+                            CreatedAtUtc = new DateTime(2026, 11, 28, 2, 13, 31, 17, DateTimeKind.Utc).AddTicks(6045),
                             IsActive = true,
                             Name = "Upstox",
                             TokenUrl = "https://api.upstox.com/v2/login/authorization/token",
@@ -450,7 +450,7 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                             ApiBaseUrl = "https://api.kite.trade",
                             AuthorizationUrl = "https://kite.zerodha.com/connect/login",
                             Code = 3,
-                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 570, DateTimeKind.Utc).AddTicks(7830),
+                            CreatedAtUtc = new DateTime(2026, 11, 28, 2, 13, 31, 18, DateTimeKind.Utc).AddTicks(1589),
                             IsActive = true,
                             Name = "Zerodha",
                             TokenUrl = "https://api.kite.trade/session/token",
@@ -1008,6 +1008,10 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("trading_account_id");
 
+                    b.Property<int>("TradingMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("trading_mode");
+
                     b.Property<Guid?>("TradingSignalId")
                         .HasColumnType("uuid")
                         .HasColumnName("trading_signal_id");
@@ -1128,6 +1132,10 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TradingAccountId")
                         .HasColumnType("uuid")
                         .HasColumnName("trading_account_id");
+
+                    b.Property<int>("TradingMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("trading_mode");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone")
@@ -1306,14 +1314,14 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000001"),
-                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 673, DateTimeKind.Utc).AddTicks(8341),
+                            CreatedAtUtc = new DateTime(2026, 11, 28, 2, 13, 31, 186, DateTimeKind.Utc).AddTicks(103),
                             Description = "Platform Administrator",
                             Name = "Admin"
                         },
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0000-000000000002"),
-                            CreatedAtUtc = new DateTime(2026, 11, 27, 1, 31, 20, 674, DateTimeKind.Utc).AddTicks(2719),
+                            CreatedAtUtc = new DateTime(2026, 11, 28, 2, 13, 31, 186, DateTimeKind.Utc).AddTicks(3408),
                             Description = "Standard Trading User",
                             Name = "User"
                         });
@@ -1597,6 +1605,10 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("trading_account_id");
 
+                    b.Property<int>("TradingMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("trading_mode");
+
                     b.Property<Guid>("TradingOrderId")
                         .HasColumnType("uuid")
                         .HasColumnName("trading_order_id");
@@ -1787,6 +1799,10 @@ namespace TradingPlatform.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TradingAccountId")
                         .HasColumnType("uuid")
                         .HasColumnName("trading_account_id");
+
+                    b.Property<int>("TradingMode")
+                        .HasColumnType("integer")
+                        .HasColumnName("trading_mode");
 
                     b.Property<decimal?>("TriggerPrice")
                         .HasPrecision(18, 4)

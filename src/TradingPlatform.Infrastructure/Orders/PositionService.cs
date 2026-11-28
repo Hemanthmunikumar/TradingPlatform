@@ -47,6 +47,7 @@ public class PositionService(
 
             var openPosition = await dbContext.Positions
                 .FirstOrDefaultAsync(p => p.TradingAccountId == execution.TradingAccountId &&
+                                          p.TradingMode == account.TradingMode &&
                                           p.InstrumentId == execution.InstrumentId &&
                                           p.ProductType == productType &&
                                           p.IsOpen, ct);
@@ -58,6 +59,7 @@ public class PositionService(
                     Id = Guid.NewGuid(),
                     UserId = execution.UserId,
                     TradingAccountId = execution.TradingAccountId,
+                    TradingMode = account.TradingMode,
                     InstrumentId = execution.InstrumentId,
                     StrategyVersionId = order?.StrategyVersionId,
                     Side = OrderSide.Buy,
@@ -199,7 +201,10 @@ public class PositionService(
     {
         var query = dbContext.Positions
             .Include(p => p.Instrument)
-            .Where(p => p.TradingAccountId == tradingAccountId);
+            .Where(p => p.TradingAccountId == tradingAccountId
+                && p.TradingAccount.IsActive
+                && p.TradingAccount.BrokerConnection.IsActive
+                && p.TradingMode == p.TradingAccount.TradingMode);
 
         if (openOnly)
         {
