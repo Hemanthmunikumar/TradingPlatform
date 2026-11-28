@@ -38,6 +38,36 @@ public class MarketMonitorHostedService(
                 {
                     _alertedToday.Clear();
                     _lastAlertDate = today;
+
+                    // Daily 10-day purge of resolved PendingTradeApprovals (safe FK unlink on TradingOrders first)
+                    try
+                    {
+                        using var purgeScope = serviceProvider.CreateScope();
+                        var purgeDb = purgeScope.ServiceProvider.GetRequiredService<TradingDbContext>();
+                        var cutoffUtc = DateTime.UtcNow.AddDays(-10);
+
+                        var oldIds = await purgeDb.PendingTradeApprovals
+                            .Where(p => p.CreatedAtUtc < cutoffUtc && p.Status != TradingPlatform.Domain.Enums.ApprovalStatus.Pending)
+                            .Select(p => p.Id)
+                            .ToListAsync(stoppingToken);
+
+                        if (oldIds.Count > 0)
+                        {
+                            await purgeDb.TradingOrders
+                                .Where(o => o.PendingTradeApprovalId != null && oldIds.Contains(o.PendingTradeApprovalId.Value))
+                                .ExecuteUpdateAsync(s => s.SetProperty(o => o.PendingTradeApprovalId, (Guid?)null), stoppingToken);
+
+                            var deleted = await purgeDb.PendingTradeApprovals
+                                .Where(p => oldIds.Contains(p.Id))
+                                .ExecuteDeleteAsync(stoppingToken);
+
+                            logger.LogInformation("Purged {Count} PendingTradeApprovals older than 10 days (before {Cutoff:yyyy-MM-dd}).", deleted, cutoffUtc);
+                        }
+                    }
+                    catch (Exception purgeEx)
+                    {
+                        logger.LogWarning(purgeEx, "Failed running 10-day PendingTradeApprovals purge");
+                    }
                 }
 
                 // Run only on weekdays

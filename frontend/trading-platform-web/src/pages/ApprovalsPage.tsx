@@ -12,6 +12,7 @@ export const ApprovalsPage: React.FC = () => {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [historyFilter, setHistoryFilter] = useState<'today' | 'all'>('today');
 
   // Paper/Mock local simulation state
   const [demoActive, setDemoActive] = useState(false);
@@ -132,6 +133,17 @@ export const ApprovalsPage: React.FC = () => {
     }) + ' IST';
   };
 
+  const getIstDateKey = (iso?: string) => {
+    const dt = iso ? new Date(iso) : new Date();
+    return dt.toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+  };
+
+  const todayIstKey = getIstDateKey();
+  const filteredHistory =
+    historyFilter === 'today'
+      ? historyApprovals.filter((a) => getIstDateKey(a.createdAtUtc || a.approvalDeadlineUtc) === todayIstKey)
+      : historyApprovals;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -246,19 +258,49 @@ export const ApprovalsPage: React.FC = () => {
 
       {/* Approvals History Table */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-800">
-          <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-            Signal Approval Audit Log
-          </h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            Durable database records of all generated BUY/SELL signals, rejection windows, and outcomes
-          </p>
+        <div className="px-5 py-4 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+              Signal Approval Audit Log
+            </h3>
+            <p className="text-xs text-slate-400 mt-0.5">
+              {historyFilter === 'today'
+                ? "Showing today's (IST) BUY/SELL signals • Auto-purged after 10 days"
+                : 'Showing all retained signals from the last 10 days'}
+            </p>
+          </div>
+          <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800 self-start sm:self-auto">
+            <button
+              onClick={() => setHistoryFilter('today')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                historyFilter === 'today'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Today Only (IST)
+            </button>
+            <button
+              onClick={() => setHistoryFilter('all')}
+              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+                historyFilter === 'all'
+                  ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              All History (10d)
+            </button>
+          </div>
         </div>
 
-        {historyApprovals.length === 0 ? (
+        {filteredHistory.length === 0 ? (
           <div className="p-12 text-center text-slate-400 space-y-2">
             <Clock size={36} className="mx-auto text-slate-600" />
-            <p className="text-sm font-medium">No signals recorded yet for the active broker.</p>
+            <p className="text-sm font-medium">
+              {historyFilter === 'today'
+                ? 'No signals recorded today (IST) for the active broker.'
+                : 'No signals recorded in the last 10 days for the active broker.'}
+            </p>
             <p className="text-xs text-slate-500">
               Trigger a Buy from AI Co-Pilot or wait for live market signals to see them here.
             </p>
@@ -276,7 +318,7 @@ export const ApprovalsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-medium">
-                {historyApprovals.map((a) => (
+                {filteredHistory.map((a) => (
                   <tr key={a.id} className="hover:bg-slate-800/30">
                     <td className="px-5 py-3.5">
                       <div className="font-bold text-white">{a.symbol} ({a.side})</div>
