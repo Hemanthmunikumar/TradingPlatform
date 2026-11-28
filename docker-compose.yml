@@ -37,6 +37,13 @@ services:
       Jwt__Issuer: "IndianAlgoTradingPlatform"
       Jwt__Audience: "IndianAlgoTradingClient"
       Encryption__MasterKey: ${MASTER_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      Email__SmtpHost: ${SMTP_HOST:-smtp.gmail.com}
+      Email__SmtpPort: ${SMTP_PORT:-587}
+      Email__SmtpUser: ${SMTP_USER:-}
+      Email__SmtpPass: ${SMTP_PASS:-}
+      Email__SenderEmail: ${SMTP_USER:-}
+      Email__SenderName: "StrikeSutra Alerts"
+      Email__EnableRealSmtp: ${ENABLE_REAL_SMTP:-false}
     ports:
       - "5000:5000"
     healthcheck:

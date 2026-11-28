@@ -88,33 +88,64 @@ public static class DatabaseSeeder
 
             await dbContext.SaveChangesAsync();
 
-            // 3. Seed Default Demo User (trader1@example.com / Password123!)
+            // 3. Migrate trader1@example.com -> hemanthmunikumar@gmail.com and seed isolated Demo Account (trader@strikesutra.com)
             var passwordHasher = serviceProvider.GetService<IPasswordHasher>();
             var encryptionService = serviceProvider.GetService<ICredentialEncryptionService>();
 
-            var defaultUser = await dbContext.Users
+            var legacyPrimary = await dbContext.Users
                 .IgnoreQueryFilters()
-                .Include(u => u.UserRoles)
-                .Include(u => u.BrokerConnections)
-                .ThenInclude(c => c.TradingAccounts)
                 .FirstOrDefaultAsync(u => u.Email == "trader1@example.com");
 
-            if (defaultUser == null && passwordHasher != null)
+            if (legacyPrimary != null)
             {
-                defaultUser = new User
+                legacyPrimary.Email = "hemanthmunikumar@gmail.com";
+                legacyPrimary.FullName = "Hemanth Muni Kumar";
+                await dbContext.SaveChangesAsync();
+            }
+
+            var primaryUser = await dbContext.Users
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(u => u.Email == "hemanthmunikumar@gmail.com");
+
+            if (primaryUser == null && passwordHasher != null)
+            {
+                primaryUser = new User
                 {
                     Id = Guid.Parse("20000000-0000-0000-0000-000000000001"),
-                    Email = "trader1@example.com",
-                    FullName = "Trader One",
+                    Email = "hemanthmunikumar@gmail.com",
+                    FullName = "Hemanth Muni Kumar",
                     PasswordHash = passwordHasher.HashPassword("Password123!"),
                     Timezone = "Asia/Kolkata",
                     IsActive = true,
                     EmailVerified = true
                 };
+                primaryUser.UserRoles.Add(new UserRole { UserId = primaryUser.Id, RoleId = userRoleId });
+                dbContext.Users.Add(primaryUser);
+                await dbContext.SaveChangesAsync();
+            }
 
-                defaultUser.UserRoles.Add(new UserRole
+            // Isolated Demo User (trader@strikesutra.com / Strikesutra123!) — Mock Simulator ONLY
+            var demoUser = await dbContext.Users
+                .IgnoreQueryFilters()
+                .Include(u => u.BrokerConnections)
+                .FirstOrDefaultAsync(u => u.Email == "trader@strikesutra.com");
+
+            if (demoUser == null && passwordHasher != null)
+            {
+                demoUser = new User
                 {
-                    UserId = defaultUser.Id,
+                    Id = Guid.Parse("20000000-0000-0000-0000-000000000002"),
+                    Email = "trader@strikesutra.com",
+                    FullName = "StrikeSutra Demo",
+                    PasswordHash = passwordHasher.HashPassword("Strikesutra123!"),
+                    Timezone = "Asia/Kolkata",
+                    IsActive = true,
+                    EmailVerified = true
+                };
+
+                demoUser.UserRoles.Add(new UserRole
+                {
+                    UserId = demoUser.Id,
                     RoleId = userRoleId
                 });
 
@@ -122,12 +153,12 @@ public static class DatabaseSeeder
                 {
                     var mockConnection = new BrokerConnection
                     {
-                        Id = Guid.Parse("30000000-0000-0000-0000-000000000001"),
-                        UserId = defaultUser.Id,
+                        Id = Guid.Parse("30000000-0000-0000-0000-000000000002"),
+                        UserId = demoUser.Id,
                         BrokerProviderId = mockProviderId,
                         DisplayName = "Mock Simulator (Paper)",
-                        EncryptedApiKey = encryptionService.Encrypt("mock_api_key_sandbox"),
-                        EncryptedApiSecret = encryptionService.Encrypt("mock_api_secret_sandbox"),
+                        EncryptedApiKey = encryptionService.Encrypt("mock_demo_key"),
+                        EncryptedApiSecret = encryptionService.Encrypt("mock_demo_secret"),
                         TradingMode = TradingMode.Paper,
                         IsActive = true,
                         TradingEnabled = true,
@@ -136,13 +167,13 @@ public static class DatabaseSeeder
                         TokenExpiresAtUtc = DateTime.UtcNow.AddYears(1)
                     };
 
-                    var defaultTradingAccount = new TradingAccount
+                    var demoAccount = new TradingAccount
                     {
-                        Id = Guid.Parse("40000000-0000-0000-0000-000000000001"),
-                        UserId = defaultUser.Id,
+                        Id = Guid.Parse("40000000-0000-0000-0000-000000000002"),
+                        UserId = demoUser.Id,
                         BrokerConnection = mockConnection,
-                        AccountId = "MOCK-ACC-001",
-                        AccountName = "Primary Equity Paper Account",
+                        AccountId = "MOCK-DEMO-001",
+                        AccountName = "Demo Paper Equity Account",
                         AccountType = AccountType.Equity,
                         IsActive = true,
                         TradingEnabled = true,
@@ -151,7 +182,7 @@ public static class DatabaseSeeder
                         AllocatedCapital = 500_000m,
                         Configuration = new AccountConfiguration
                         {
-                            UserId = defaultUser.Id,
+                            UserId = demoUser.Id,
                             MaxCapitalAllocation = 500_000m,
                             MaxOrderValue = 100_000m,
                             MaxPositions = 10,
@@ -160,17 +191,17 @@ public static class DatabaseSeeder
                             MaxExposurePerStockPercent = 25.0m,
                             MaxTradesPerDay = 25,
                             StopLossRequired = true,
-                            ApprovalDurationSeconds = 2,
-                            AutoExecuteOnTimeout = true,
+                            ApprovalDurationSeconds = 60,
+                            AutoExecuteOnTimeout = false,
                             KillSwitchActive = false
                         }
                     };
 
-                    mockConnection.TradingAccounts.Add(defaultTradingAccount);
-                    defaultUser.BrokerConnections.Add(mockConnection);
+                    mockConnection.TradingAccounts.Add(demoAccount);
+                    demoUser.BrokerConnections.Add(mockConnection);
                 }
 
-                dbContext.Users.Add(defaultUser);
+                dbContext.Users.Add(demoUser);
                 await dbContext.SaveChangesAsync();
             }
 

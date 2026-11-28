@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Lock, Mail, User, Globe, AlertCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Lock, Mail, User, Globe, AlertCircle, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/client';
 import type { ApiResponse, AuthResponse } from '../types';
@@ -12,6 +12,7 @@ export const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [timezone, setTimezone] = useState('Asia/Kolkata');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,20 +48,21 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 px-4 text-slate-100">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-2xl text-white shadow-xl shadow-sky-500/25 mx-auto">
-          AP
+    <div className="min-h-screen w-full bg-slate-950 flex items-center justify-center py-12 sm:px-6 lg:px-8 px-4 text-slate-100">
+      <div className="w-full max-w-md mx-auto">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center font-black text-2xl text-white shadow-xl shadow-sky-500/25 mx-auto">
+            SS
+          </div>
+          <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
+            Create StrikeSutra Account
+          </h2>
+          <p className="mt-2 text-sm text-slate-400">
+            Broker-isolated multi-tenant trading environment
+          </p>
         </div>
-        <h2 className="mt-4 text-3xl font-extrabold tracking-tight text-white">
-          Create Trader Account
-        </h2>
-        <p className="mt-2 text-sm text-slate-400">
-          Broker-isolated multi-tenant trading environment
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="mt-8">
         <div className="bg-slate-900/90 py-8 px-6 shadow-2xl rounded-2xl border border-slate-800 sm:px-10 backdrop-blur-md">
           {error && (
             <div className="mb-6 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-start gap-2.5">
@@ -117,14 +119,22 @@ export const RegisterPage: React.FC = () => {
                   <Lock size={18} />
                 </div>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="At least 8 characters"
-                  className="block w-full pl-10 pr-3 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
+                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-lg text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200 transition"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -183,6 +193,7 @@ export const RegisterPage: React.FC = () => {
             </Link>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

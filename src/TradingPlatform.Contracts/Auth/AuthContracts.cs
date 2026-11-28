@@ -35,3 +35,7 @@ public record UserDto(
     string Timezone,
     IEnumerable<string> Roles
 );
+
+public record ForgotPasswordRequest(string Email);
+
+public record ResetPasswordRequest(string Email, string Code, string NewPassword);
