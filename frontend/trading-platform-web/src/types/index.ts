@@ -117,6 +117,8 @@ export interface PreMarketScanResponse {
   totalScanned: number;
   hitCount: number;
   signals: PreMarket21EmaSignalDto[];
+  stopLossPercent?: number;
+  targetPercent?: number;
 }
 
 export interface IndiaOrbHitDto {

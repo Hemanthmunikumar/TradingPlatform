@@ -346,13 +346,11 @@ public class AiAdvisorController(
         var symbol = request?.Symbol?.Trim().ToUpperInvariant() ?? "INFY";
         var quantity = request?.Quantity > 0 ? request.Quantity : 10;
 
-        var account = await dbContext.TradingAccounts
-            .Include(a => a.Configuration)
-            .FirstOrDefaultAsync(a => a.IsActive, ct);
+        var account = await GetActiveAccountForCurrentUserAsync(ct);
 
         if (account == null)
         {
-            return BadRequest(ApiResponse<PendingTradeApprovalDto>.Fail("No active trading account found."));
+            return BadRequest(ApiResponse<PendingTradeApprovalDto>.Fail("No active enabled trading account found."));
         }
 
         var inst = await dbContext.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == symbol, ct)
@@ -408,22 +406,47 @@ public class AiAdvisorController(
         [FromQuery] string? symbols = null,
         CancellationToken ct = default)
     {
-        // If minVolume not specified in query, load from account configuration
+        // Load volume, SL%, and Target% from the active enabled account configuration
         long effectiveVolume = minVolume ?? 20000;
-        if (!minVolume.HasValue)
-        {
-            var activeAccount = await dbContext.TradingAccounts
-                .AsNoTracking()
-                .Include(a => a.Configuration)
-                .FirstOrDefaultAsync(a => a.IsActive, ct);
+        decimal slPct = 2.5m;
+        decimal tgtPct = 10.0m;
 
-            if (activeAccount?.Configuration?.IntradayMinVolume > 0)
+        var activeAccount = await GetActiveAccountForCurrentUserAsync(ct);
+        if (activeAccount?.Configuration != null)
+        {
+            if (!minVolume.HasValue && activeAccount.Configuration.IntradayMinVolume > 0)
             {
                 effectiveVolume = activeAccount.Configuration.IntradayMinVolume;
             }
+            if (activeAccount.Configuration.IntradayStopLossPercent > 0)
+            {
+                slPct = activeAccount.Configuration.IntradayStopLossPercent;
+            }
+            if (activeAccount.Configuration.IntradayTargetPercent > 0)
+            {
+                tgtPct = activeAccount.Configuration.IntradayTargetPercent;
+            }
         }
 
-        var result = await indiaDayTraderService.ScanPreMarket21EmaAsync(minGain, maxGain, effectiveVolume, symbols, ct);
+        var raw = await indiaDayTraderService.ScanPreMarket21EmaAsync(minGain, maxGain, effectiveVolume, symbols, ct);
+        var slFactor = 1m - (slPct / 100m);
+        var tgtFactor = 1m + (tgtPct / 100m);
+
+        var adjustedSignals = raw.Signals.Select(s => s with
+        {
+            StopLoss = Math.Round(s.SpotPrice * slFactor, 2),
+            TargetPrice = Math.Round(s.SpotPrice * tgtFactor, 2),
+            OptionStopLoss = s.OptionLtp > 0 ? Math.Round(s.OptionLtp * slFactor, 2) : 0m,
+            OptionTarget = s.OptionLtp > 0 ? Math.Round(s.OptionLtp * tgtFactor, 2) : 0m
+        }).ToList();
+
+        var result = raw with
+        {
+            Signals = adjustedSignals,
+            StopLossPercent = slPct,
+            TargetPercent = tgtPct
+        };
+
         return Ok(ApiResponse<PreMarketScanResponse>.Ok(result, "Pre-market 21 EMA Pullback scan complete"));
     }
 
@@ -497,10 +520,8 @@ public class AiAdvisorController(
     [ProducesResponseType(typeof(ApiResponse<PendingTradeApprovalDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> TriggerPreMarketOrder([FromBody] TriggerPreMarketOrderRequest request, CancellationToken ct)
     {
-        var activeAccount = await dbContext.TradingAccounts
-            .Include(a => a.Configuration)
-            .FirstOrDefaultAsync(a => a.IsActive, ct)
-            ?? throw new InvalidOperationException("No active trading account found.");
+        var activeAccount = await GetActiveAccountForCurrentUserAsync(ct)
+            ?? throw new InvalidOperationException("No active enabled trading account found.");
 
         var inst = await dbContext.Instruments
             .FirstOrDefaultAsync(i => i.TradingSymbol == request.Symbol, ct)
@@ -902,8 +923,16 @@ public class AiAdvisorController(
             return NotFound(ApiResponse<PendingTradeApprovalDto>.Fail("Holding position not found."));
         }
 
-        var quote = await marketDataService.GetQuoteAsync(position.Instrument.TradingSymbol, "NSE", ct);
-        var currentPrice = quote.LastPrice > 0 ? quote.LastPrice : position.CurrentPrice;
+        decimal currentPrice;
+        if (position.TradingMode == TradingMode.Live && position.CurrentPrice > 0)
+        {
+            currentPrice = position.CurrentPrice;
+        }
+        else
+        {
+            var quote = await marketDataService.GetQuoteAsync(position.Instrument.TradingSymbol, "NSE", ct);
+            currentPrice = quote.LastPrice > 0 ? quote.LastPrice : position.CurrentPrice;
+        }
 
         var isBuy = request.Action.Equals("ADD_QUANTITY", StringComparison.OrdinalIgnoreCase);
         var qty = request.Quantity > 0 ? request.Quantity : (isBuy ? 10 : position.Quantity);
@@ -933,6 +962,19 @@ public class AiAdvisorController(
         var approval = await tradeApprovalService.CreateApprovalAsync(approvalRequest, ct);
 
         return Ok(ApiResponse<PendingTradeApprovalDto>.Ok(approval, $"{durationSeconds}s {side.ToUpperInvariant()} Approval Window generated for {position.Instrument.TradingSymbol}."));
+    }
+
+    private async Task<TradingAccount?> GetActiveAccountForCurrentUserAsync(CancellationToken ct)
+    {
+        var userId = currentUserService.UserId;
+        return await dbContext.TradingAccounts
+            .Include(a => a.Configuration)
+            .Include(a => a.BrokerConnection)
+                .ThenInclude(b => b.BrokerProvider)
+            .Where(a => a.IsActive && a.BrokerConnection.IsActive && (!userId.HasValue || a.UserId == userId.Value))
+            .OrderByDescending(a => a.TradingMode == TradingMode.Live)
+            .ThenByDescending(a => a.BrokerConnection.BrokerProvider.Code == BrokerCode.Zerodha)
+            .FirstOrDefaultAsync(ct);
     }
 
     [HttpPost("config")]

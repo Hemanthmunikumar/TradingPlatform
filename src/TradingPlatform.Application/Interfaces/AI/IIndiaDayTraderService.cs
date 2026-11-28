@@ -33,7 +33,9 @@ public record PreMarketScanResponse(
     long MinVolume,
     int TotalScanned,
     int HitCount,
-    IReadOnlyList<PreMarket21EmaSignalDto> Signals
+    IReadOnlyList<PreMarket21EmaSignalDto> Signals,
+    decimal StopLossPercent = 2.5m,
+    decimal TargetPercent = 10.0m
 );
 
 public record IndiaOrbHitDto(

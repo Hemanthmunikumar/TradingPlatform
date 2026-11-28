@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationCenter } from '../components/NotificationCenter';
+import { BuyApprovalToast } from '../components/BuyApprovalToast';
 import { apiClient } from '../api/client';
 import type { ApiResponse, BrokerConnectionDto } from '../types';
 
@@ -209,6 +210,8 @@ export const DashboardLayout: React.FC = () => {
           );
         })}
       </nav>
+      {/* Global Persistent Countdown Approval Toast + Tab Flash + Desktop Alerts */}
+      <BuyApprovalToast />
     </div>
   );
 };

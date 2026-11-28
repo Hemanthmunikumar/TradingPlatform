@@ -163,11 +163,17 @@ public class ConfigurableAiMarketAdvisorService(
             foreach (var sym in watchlistItems) targetSymbols.Add(sym);
         }
 
-        // Query active positions/holdings
+        // Query active positions/holdings from enabled broker accounts matching current mode
         var openPositions = await dbContext.Positions
             .AsNoTracking()
             .Include(p => p.Instrument)
-            .Where(p => p.IsOpen && (accountId == null || p.TradingAccountId == accountId.Value))
+            .Include(p => p.TradingAccount)
+                .ThenInclude(a => a.BrokerConnection)
+            .Where(p => p.IsOpen
+                && p.TradingAccount.IsActive
+                && p.TradingAccount.BrokerConnection.IsActive
+                && p.TradingMode == p.TradingAccount.TradingMode
+                && (accountId == null || p.TradingAccountId == accountId.Value))
             .ToListAsync(ct);
 
         var positionMap = openPositions
@@ -184,12 +190,24 @@ public class ConfigurableAiMarketAdvisorService(
         {
             try
             {
-                var quote = await marketDataService.GetQuoteAsync(symbol, "NSE", ct);
                 var isHolding = positionMap.TryGetValue(symbol, out var pos);
+                decimal currentPrice;
+                decimal dayChange = 0m;
+                long volume = 100000;
+                string companyName = isHolding ? (pos!.Instrument.CompanyName ?? symbol) : symbol;
 
-                // Calculate realistic indicators based on current market price dynamics
-                decimal currentPrice = quote.LastPrice > 0 ? quote.LastPrice : 1500m;
-                decimal dayChange = quote.ChangePercent;
+                if (isHolding && pos!.TradingMode == Domain.Enums.TradingMode.Live && pos.CurrentPrice > 0)
+                {
+                    currentPrice = pos.CurrentPrice;
+                }
+                else
+                {
+                    var quote = await marketDataService.GetQuoteAsync(symbol, "NSE", ct);
+                    currentPrice = quote.LastPrice > 0 ? quote.LastPrice : (isHolding && pos!.CurrentPrice > 0 ? pos.CurrentPrice : 1500m);
+                    dayChange = quote.ChangePercent;
+                    volume = quote.Volume;
+                    companyName = quote.TradingSymbol;
+                }
 
                 // Technical simulation for live scenario analysis
                 decimal ema20 = currentPrice * (1.0m - (dayChange * 0.005m));
@@ -197,11 +215,11 @@ public class ConfigurableAiMarketAdvisorService(
                 decimal ema200 = currentPrice * 0.94m;
                 decimal vwap = currentPrice * (1.0m + (dayChange * 0.002m));
                 decimal rsi = Math.Clamp(50m + (dayChange * 4.5m), 15m, 85m);
-                decimal volRatio = quote.Volume > 0 ? 1.35m : 1.1m;
+                decimal volRatio = volume > 0 ? 1.35m : 1.1m;
 
                 var request = new AiAnalysisRequest(
                     Symbol: symbol,
-                    CompanyName: quote.TradingSymbol,
+                    CompanyName: companyName,
                     CurrentPrice: currentPrice,
                     DayChangePercent: dayChange,
                     Rsi14: rsi,

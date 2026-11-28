@@ -98,10 +98,19 @@ public class MarketMonitorHostedService(
                     ? activeAccount.Configuration.ApprovalDurationSeconds
                     : 60;
 
+                var slPct = activeAccount.Configuration?.IntradayStopLossPercent > 0
+                    ? activeAccount.Configuration.IntradayStopLossPercent
+                    : 2.5m;
+                var tgtPct = activeAccount.Configuration?.IntradayTargetPercent > 0
+                    ? activeAccount.Configuration.IntradayTargetPercent
+                    : 10.0m;
+                var slFactor = 1m - (slPct / 100m);
+                var tgtFactor = 1m + (tgtPct / 100m);
+
                 var scan = await scanner.ScanPreMarket21EmaAsync(1.0m, 2.5m, minVol, null, stoppingToken);
                 foreach (var sig in scan.Signals.Where(s => s.Status == "ACTIVE_BUY_AT_21EMA"))
                 {
-                    var key = $"{today:yyyyMMdd}:{sig.Symbol}";
+                    var key = $"{today:yyyyMMdd}:EMA21:{sig.Symbol}";
                     if (_alertedToday.Contains(key))
                         continue;
 
@@ -129,6 +138,9 @@ public class MarketMonitorHostedService(
                         ? "5m Candle Confirmed"
                         : "21-EMA Pullback";
 
+                    var slPrice = Math.Round(sig.SpotPrice * slFactor, 2);
+                    var tgtPrice = Math.Round(sig.SpotPrice * tgtFactor, 2);
+
                     var inst = await db.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == sig.Symbol, stoppingToken);
                     if (inst == null)
                     {
@@ -153,15 +165,77 @@ public class MarketMonitorHostedService(
                         Side: "Buy",
                         Quantity: 10,
                         IndicativePrice: sig.SpotPrice,
-                        StopLoss: sig.StopLoss,
-                        Target: sig.TargetPrice,
-                        RiskAmount: Math.Round(Math.Abs(sig.SpotPrice - sig.StopLoss) * 10m, 2),
+                        StopLoss: slPrice,
+                        Target: tgtPrice,
+                        RiskAmount: Math.Round(Math.Abs(sig.SpotPrice - slPrice) * 10m, 2),
                         Reason: $"Live NSE Monitor ({entryTag}): {sig.Symbol} (+{sig.GainPercent}%) near 21-EMA (₹{sig.Ema21}). ATM: {sig.SuggestedAtmOption}{newsTag}",
                         ApprovalDurationSeconds: duration
                     ), stoppingToken);
 
                     logger.LogInformation("MarketMonitor raised {Duration}s BUY alert for {Symbol} (AutoExecute={Auto}, Entry={EntryStatus})",
                         duration, sig.Symbol, activeAccount.Configuration?.AutoExecuteOnTimeout ?? false, entryCheck.Status);
+                }
+
+                // Also scan 15-min ORB Breakouts between 09:30 and 14:45 IST using all skills
+                if (time >= new TimeOnly(9, 30) && time <= new TimeOnly(14, 45))
+                {
+                    var orbHits = await scanner.ScanOrbBreakoutsAsync(null, 20, 50000000, stoppingToken);
+                    foreach (var hit in orbHits.Where(h => !h.NearUpperCircuit && h.Setups.Count > 0))
+                    {
+                        var orbKey = $"{today:yyyyMMdd}:ORB:{hit.Symbol}";
+                        if (_alertedToday.Contains(orbKey))
+                            continue;
+
+                        var news = await scanner.GetStockNewsAsync(hit.Symbol, 24, stoppingToken);
+                        if (news.HasRedFlag)
+                        {
+                            _alertedToday.Add(orbKey);
+                            logger.LogWarning("MarketMonitor ORB skipped {Symbol} due to news red-flag: {Reason}", hit.Symbol, news.RedFlagReason);
+                            continue;
+                        }
+
+                        var entryCheck = await scanner.CheckEntryConfirmationAsync(hit.Symbol, null, 1.2m, stoppingToken);
+                        if (string.Equals(entryCheck.Status, "waiting", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        _alertedToday.Add(orbKey);
+                        var slPrice = Math.Round(hit.Price * slFactor, 2);
+                        var tgtPrice = Math.Round(hit.Price * tgtFactor, 2);
+                        var inst = await db.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == hit.Symbol, stoppingToken);
+                        if (inst == null)
+                        {
+                            inst = new TradingPlatform.Domain.Entities.Instrument
+                            {
+                                TradingSymbol = hit.Symbol,
+                                Exchange = hit.Exchange,
+                                CompanyName = hit.Symbol,
+                                LotSize = 1,
+                                TickSize = 0.05m
+                            };
+                            db.Instruments.Add(inst);
+                            await db.SaveChangesAsync(stoppingToken);
+                        }
+
+                        await approvals.CreateApprovalAsync(new CreateTradeApprovalRequest(
+                            TradingAccountId: activeAccount.Id,
+                            InstrumentId: inst.Id,
+                            TradingSignalId: null,
+                            Symbol: hit.Symbol,
+                            CompanyName: hit.Symbol,
+                            Side: "Buy",
+                            Quantity: 10,
+                            IndicativePrice: hit.Price,
+                            StopLoss: slPrice,
+                            Target: tgtPrice,
+                            RiskAmount: Math.Round(Math.Abs(hit.Price - slPrice) * 10m, 2),
+                            Reason: $"15m ORB Breakout ({string.Join(", ", hit.Setups)}): {hit.Symbol} @ ₹{hit.Price} (RSI {hit.Rsi}).",
+                            ApprovalDurationSeconds: duration
+                        ), stoppingToken);
+
+                        logger.LogInformation("MarketMonitor ORB raised {Duration}s BUY alert for {Symbol}", duration, hit.Symbol);
+                    }
                 }
             }
             catch (OperationCanceledException)

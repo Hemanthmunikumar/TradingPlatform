@@ -78,6 +78,23 @@ export const AiMarketExpertPage: React.FC = () => {
   const [insiderDeals, setInsiderDeals] = useState<IndiaInsiderDealDto[]>([]);
   const [analyses, setAnalyses] = useState<AiAnalysisResultDto[]>([]);
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [lastScannedAt, setLastScannedAt] = useState<string>(new Date().toISOString());
+  const [slPercent, setSlPercent] = useState<number>(2.5);
+  const [tgtPercent, setTgtPercent] = useState<number>(10.0);
+
+  const formatIstTimestamp = (iso?: string) => {
+    const dt = iso ? new Date(iso) : new Date();
+    return (
+      dt.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }) + ' IST'
+    );
+  };
 
   // 4-Stage Skill Inspector Modal State
   const [inspectSymbol, setInspectSymbol] = useState<string | null>(null);
@@ -190,7 +207,10 @@ export const AiMarketExpertPage: React.FC = () => {
       }
       if (pmRes.data.success && pmRes.data.data) {
         setPremarketData(pmRes.data.data);
+        if (pmRes.data.data.stopLossPercent) setSlPercent(pmRes.data.data.stopLossPercent);
+        if (pmRes.data.data.targetPercent) setTgtPercent(pmRes.data.data.targetPercent);
       }
+      setLastScannedAt(new Date().toISOString());
       if (orbRes.data.success && orbRes.data.data) {
         setOrbHits(orbRes.data.data);
       }
@@ -321,6 +341,7 @@ export const AiMarketExpertPage: React.FC = () => {
         quantity: 10
       });
       if (res.data.success) {
+        if (res.data.data) window.dispatchEvent(new CustomEvent('approval-created', { detail: res.data.data }));
         setSimMessage(`⚡ ${approvalDurationSeconds}s BUY Window Triggered for 10 shares of ${item.symbol} @ ₹${item.lastPrice}! ATM Option Strike: ${item.suggestedAtmOption}. Watch countdown toast.`);
       }
     } catch (err: any) {
@@ -341,6 +362,7 @@ export const AiMarketExpertPage: React.FC = () => {
         quantity: qty
       });
       if (res.data.success) {
+        if (res.data.data) window.dispatchEvent(new CustomEvent('approval-created', { detail: res.data.data }));
         setSimMessage(`⚡ ${approvalDurationSeconds}s ${res.data.data?.side} Window Triggered for ${res.data.data?.quantity} shares of ${holding.symbol} @ ₹${res.data.data?.indicativePrice}! Watch countdown toast.`);
         await handleSyncBroker();
       }
@@ -364,10 +386,36 @@ export const AiMarketExpertPage: React.FC = () => {
         quantity: 10
       });
       if (res.data.success) {
+        if (res.data.data) window.dispatchEvent(new CustomEvent('approval-created', { detail: res.data.data }));
         setSimMessage(`⚡ ${approvalDurationSeconds}s BUY Window Triggered for 10 shares of ${signal.symbol} @ ₹${signal.spotPrice}! ATM Option Strike: ${signal.suggestedAtmOption}. Observe countdown toast.`);
       }
     } catch (err: any) {
       setSimMessage(`Failed to trigger buy: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsSimulating(false);
+    }
+  };
+
+  const handleTriggerOrbBuy = async (hit: IndiaOrbHitDto) => {
+    setIsSimulating(true);
+    setSimMessage(null);
+    const slPrice = Number((hit.price * (1 - slPercent / 100)).toFixed(2));
+    const tgtPrice = Number((hit.price * (1 + tgtPercent / 100)).toFixed(2));
+    try {
+      const res = await apiClient.post<ApiResponse<any>>('/ai/trigger-premarket-order', {
+        symbol: hit.symbol,
+        price: hit.price,
+        stopLoss: slPrice,
+        targetPrice: tgtPrice,
+        suggestedAtmOption: 'ORB 15m Breakout',
+        quantity: 10
+      });
+      if (res.data.success) {
+        if (res.data.data) window.dispatchEvent(new CustomEvent('approval-created', { detail: res.data.data }));
+        setSimMessage(`⚡ ${approvalDurationSeconds}s ORB BUY Window Triggered for 10 shares of ${hit.symbol} @ ₹${hit.price}! Watch countdown toast.`);
+      }
+    } catch (err: any) {
+      setSimMessage(`Failed to trigger ORB buy: ${err.response?.data?.message || err.message}`);
     } finally {
       setIsSimulating(false);
     }
@@ -382,6 +430,7 @@ export const AiMarketExpertPage: React.FC = () => {
         quantity: 10,
       });
       if (res.data.success) {
+        if (res.data.data) window.dispatchEvent(new CustomEvent('approval-created', { detail: res.data.data }));
         setSimMessage(`⚡ ${approvalDurationSeconds}s BUY Window Triggered for 10 shares of ${symbol} @ ₹${res.data.data?.indicativePrice}! Watch the persistent countdown toast.`);
       }
     } catch (err: any) {
@@ -1257,9 +1306,10 @@ export const AiMarketExpertPage: React.FC = () => {
                     </div>
 
                     {/* Bottom Action: 1-Click Trigger Buy Ticket */}
-                    <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex items-center justify-between gap-3">
-                      <span className="text-[11px] text-slate-500">
-                        {approvalDurationSeconds}s countdown approval safety gate
+                    <div className="mt-4 pt-3.5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <Clock size={11} className="text-sky-400" />
+                        {formatIstTimestamp(lastScannedAt)} • {approvalDurationSeconds}s gate
                       </span>
                       <button
                         onClick={() => handleTriggerSpecialMonitorBuy(item)}
@@ -1403,14 +1453,18 @@ export const AiMarketExpertPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Risk & Target (Option-Based & Spot) */}
+                  {/* Risk & Target (Configured from Account Risk Settings) */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs px-1">
                     <span className="text-rose-400 font-semibold">
-                      Option SL (-2.5% EMA): ₹{(sig.optionStopLoss && sig.optionStopLoss > 0 ? sig.optionStopLoss : sig.stopLoss).toFixed(2)}
+                      SL (-{slPercent}%): ₹{(sig.optionStopLoss && sig.optionStopLoss > 0 ? sig.optionStopLoss : sig.stopLoss).toFixed(2)}
                     </span>
                     <span className="text-emerald-400 font-semibold">
-                      Option Target (+10%): ₹{(sig.optionTarget && sig.optionTarget > 0 ? sig.optionTarget : sig.targetPrice).toFixed(2)}
+                      Target (+{tgtPercent}%): ₹{(sig.optionTarget && sig.optionTarget > 0 ? sig.optionTarget : sig.targetPrice).toFixed(2)}
                     </span>
+                  </div>
+                  <div className="text-[11px] text-slate-400 px-1 flex items-center gap-1">
+                    <Clock size={11} className="text-sky-400" />
+                    Suggested: {formatIstTimestamp(sig.timestamp)}
                   </div>
 
                   {/* 1-Click Trigger & 4-Stage Skill Check */}
@@ -1487,6 +1541,39 @@ export const AiMarketExpertPage: React.FC = () => {
                     <div>
                       <span className="text-[10px] text-slate-500 block">Square-Off</span>
                       <span className="text-amber-400 font-bold">{h.squareOff} IST</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="text-rose-400 font-semibold">
+                      SL (-{slPercent}%): ₹{(h.price * (1 - slPercent / 100)).toFixed(2)}
+                    </span>
+                    <span className="text-emerald-400 font-semibold">
+                      Target (+{tgtPercent}%): ₹{(h.price * (1 + tgtPercent / 100)).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <Clock size={11} className="text-sky-400" />
+                      {formatIstTimestamp(lastScannedAt)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleInspectSkills(h.symbol, h.price, Number((h.price * (1 - slPercent / 100)).toFixed(2)), Number((h.price * (1 + tgtPercent / 100)).toFixed(2)))}
+                        className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-sky-300 border border-slate-700 rounded-lg text-xs font-semibold transition"
+                      >
+                        <Search size={12} />
+                        4-Stage Check
+                      </button>
+                      <button
+                        onClick={() => handleTriggerOrbBuy(h)}
+                        disabled={isSimulating}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-sky-500 to-emerald-600 hover:from-sky-400 hover:to-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition"
+                      >
+                        <Zap size={13} />
+                        Trigger Buy
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1625,6 +1712,10 @@ export const AiMarketExpertPage: React.FC = () => {
                   <div className="space-y-1.5 text-xs">
                     <p className="text-slate-200 font-semibold leading-relaxed">{item.summary}</p>
                     <p className="text-slate-400 text-[11px]">💡 <strong>Rationale:</strong> {item.technicalRationale}</p>
+                    <p className="text-slate-500 text-[11px] flex items-center gap-1">
+                      <Clock size={11} className="text-sky-400" />
+                      Suggested: {formatIstTimestamp(item.analyzedAtUtc)}
+                    </p>
                   </div>
 
                   {(item.action === 'STRONG_BUY' || item.action === 'BUY_THE_DIP') && (
@@ -1637,7 +1728,7 @@ export const AiMarketExpertPage: React.FC = () => {
                         className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold shadow-md transition"
                       >
                         <Zap size={13} />
-                        Trigger Buy Trial
+                        Trigger Buy
                       </button>
                     </div>
                   )}
