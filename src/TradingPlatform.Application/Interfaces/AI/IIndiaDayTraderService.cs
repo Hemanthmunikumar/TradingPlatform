@@ -48,7 +48,8 @@ public record IndiaOrbHitDto(
     long Volume,
     bool NearUpperCircuit,
     string SquareOff,
-    string SessionClose
+    string SessionClose,
+    DateTime? Timestamp = null
 );
 
 public record IndiaInsiderDealDto(

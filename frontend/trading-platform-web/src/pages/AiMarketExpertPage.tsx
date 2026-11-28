@@ -1556,7 +1556,7 @@ export const AiMarketExpertPage: React.FC = () => {
                   <div className="pt-2 flex flex-wrap items-center justify-between gap-2 border-t border-slate-800">
                     <span className="text-[11px] text-slate-400 flex items-center gap-1">
                       <Clock size={11} className="text-sky-400" />
-                      {formatIstTimestamp(lastScannedAt)}
+                      Suggested Entry Time: {formatIstTimestamp(h.timestamp)}
                     </span>
                     <div className="flex items-center gap-2">
                       <button
@@ -1714,7 +1714,7 @@ export const AiMarketExpertPage: React.FC = () => {
                     <p className="text-slate-400 text-[11px]">💡 <strong>Rationale:</strong> {item.technicalRationale}</p>
                     <p className="text-slate-500 text-[11px] flex items-center gap-1">
                       <Clock size={11} className="text-sky-400" />
-                      Suggested: {formatIstTimestamp(item.analyzedAtUtc)}
+                      Suggested Entry Time: {formatIstTimestamp(item.analyzedAtUtc)}
                     </p>
                   </div>
 

@@ -479,8 +479,61 @@ public class AiAdvisorController(
     [ProducesResponseType(typeof(ApiResponse<IReadOnlyList<IndiaOrbHitDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOrbBreakouts([FromQuery] string? symbols = null, CancellationToken ct = default)
     {
-        var result = await indiaDayTraderService.ScanOrbBreakoutsAsync(symbols, ct: ct);
+        var raw = await indiaDayTraderService.ScanOrbBreakoutsAsync(symbols, ct: ct);
+        var defaultMarketUtc = GetLastNseMarketTimestampUtc();
+        var triggeredToday = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+
+        var istZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+        var istNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, istZone);
+        var activeAccount = await GetActiveAccountForCurrentUserAsync(ct);
+
+        if (activeAccount != null && istNow.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+        {
+            var todayStartUtc = TimeZoneInfo.ConvertTimeToUtc(istNow.Date, istZone);
+            var todayApprovals = await dbContext.PendingTradeApprovals
+                .AsNoTracking()
+                .Where(p => p.TradingAccountId == activeAccount.Id
+                    && p.CreatedAtUtc >= todayStartUtc
+                    && (p.Reason.StartsWith("15m ORB") || p.Reason.StartsWith("Live NSE Monitor")))
+                .OrderBy(p => p.CreatedAtUtc)
+                .Select(p => new { p.Symbol, p.CreatedAtUtc })
+                .ToListAsync(ct);
+
+            foreach (var ta in todayApprovals)
+            {
+                triggeredToday.TryAdd(ta.Symbol, ta.CreatedAtUtc);
+            }
+        }
+
+        var result = raw.Select(h => h with
+        {
+            Timestamp = triggeredToday.TryGetValue(h.Symbol, out var trigAt) ? trigAt : defaultMarketUtc
+        }).ToList();
+
         return Ok(ApiResponse<IReadOnlyList<IndiaOrbHitDto>>.Ok(result, "NSE Opening-Range Breakouts scan complete"));
+    }
+
+    private static DateTime GetLastNseMarketTimestampUtc()
+    {
+        var istZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+        var istNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, istZone);
+        var time = TimeOnly.FromDateTime(istNow);
+
+        if (istNow.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday)
+            && time >= new TimeOnly(9, 15) && time <= new TimeOnly(15, 30))
+        {
+            return DateTime.UtcNow;
+        }
+
+        var lastDate = istNow.Date;
+        if (istNow.DayOfWeek == DayOfWeek.Saturday) lastDate = lastDate.AddDays(-1);
+        else if (istNow.DayOfWeek == DayOfWeek.Sunday) lastDate = lastDate.AddDays(-2);
+        else if (time < new TimeOnly(9, 15))
+            lastDate = istNow.DayOfWeek == DayOfWeek.Monday ? lastDate.AddDays(-3) : lastDate.AddDays(-1);
+
+        return TimeZoneInfo.ConvertTimeToUtc(lastDate.AddHours(15).AddMinutes(29), istZone);
     }
 
     [HttpGet("skills/insider-deals")]

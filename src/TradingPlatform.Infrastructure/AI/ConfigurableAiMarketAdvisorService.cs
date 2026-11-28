@@ -235,6 +235,7 @@ public class ConfigurableAiMarketAdvisorService(
                 );
 
                 var analysis = await AnalyzeStockAsync(request, ct);
+                analysis = analysis with { AnalyzedAtUtc = ResolveSuggestedEntryTimeUtc(symbol, openPositions, ct) };
                 results.Add(analysis);
             }
             catch (Exception ex)
@@ -244,6 +245,39 @@ public class ConfigurableAiMarketAdvisorService(
         }
 
         return results.OrderByDescending(r => r.ConvictionScore).ToList();
+    }
+
+    private DateTime ResolveSuggestedEntryTimeUtc(string symbol, IReadOnlyList<Domain.Entities.Position> openPositions, CancellationToken ct)
+    {
+        var istZone = TimeZoneInfo.FindSystemTimeZoneById(
+            OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+        var istNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, istZone);
+        var time = TimeOnly.FromDateTime(istNow);
+
+        if (istNow.DayOfWeek is not (DayOfWeek.Saturday or DayOfWeek.Sunday))
+        {
+            var todayStartUtc = TimeZoneInfo.ConvertTimeToUtc(istNow.Date, istZone);
+            var triggered = dbContext.PendingTradeApprovals
+                .AsNoTracking()
+                .Where(p => p.Symbol == symbol
+                    && p.CreatedAtUtc >= todayStartUtc
+                    && (p.Reason.StartsWith("Live NSE Monitor") || p.Reason.StartsWith("15m ORB")))
+                .OrderBy(p => p.CreatedAtUtc)
+                .Select(p => (DateTime?)p.CreatedAtUtc)
+                .FirstOrDefault();
+            if (triggered.HasValue) return triggered.Value;
+
+            if (time >= new TimeOnly(9, 15) && time <= new TimeOnly(15, 30))
+                return DateTime.UtcNow;
+        }
+
+        var lastDate = istNow.Date;
+        if (istNow.DayOfWeek == DayOfWeek.Saturday) lastDate = lastDate.AddDays(-1);
+        else if (istNow.DayOfWeek == DayOfWeek.Sunday) lastDate = lastDate.AddDays(-2);
+        else if (time < new TimeOnly(9, 15))
+            lastDate = istNow.DayOfWeek == DayOfWeek.Monday ? lastDate.AddDays(-3) : lastDate.AddDays(-1);
+
+        return TimeZoneInfo.ConvertTimeToUtc(lastDate.AddHours(15).AddMinutes(29), istZone);
     }
 
     private AiAnalysisResult EvaluateQuantRules(AiAnalysisRequest req, AiAdvisorConfigDto config)

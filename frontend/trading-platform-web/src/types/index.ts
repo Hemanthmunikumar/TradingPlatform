@@ -132,6 +132,7 @@ export interface IndiaOrbHitDto {
   nearUpperCircuit: boolean;
   squareOff: string;
   sessionClose: string;
+  timestamp?: string;
 }
 
 export interface IndiaInsiderDealDto {
