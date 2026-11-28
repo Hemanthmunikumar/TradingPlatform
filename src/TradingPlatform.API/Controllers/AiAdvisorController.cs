@@ -432,12 +432,35 @@ public class AiAdvisorController(
         var slFactor = 1m - (slPct / 100m);
         var tgtFactor = 1m + (tgtPct / 100m);
 
+        // If MarketMonitor already triggered a symbol today, preserve the exact trigger timestamp
+        var triggeredToday = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        if (activeAccount != null)
+        {
+            var istZone = TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "India Standard Time" : "Asia/Kolkata");
+            var istNow = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, istZone);
+            var todayStartUtc = TimeZoneInfo.ConvertTimeToUtc(istNow.Date, istZone);
+
+            var todayApprovals = await dbContext.PendingTradeApprovals
+                .AsNoTracking()
+                .Where(p => p.TradingAccountId == activeAccount.Id && p.CreatedAtUtc >= todayStartUtc)
+                .OrderBy(p => p.CreatedAtUtc)
+                .Select(p => new { p.Symbol, p.CreatedAtUtc })
+                .ToListAsync(ct);
+
+            foreach (var ta in todayApprovals)
+            {
+                triggeredToday.TryAdd(ta.Symbol, ta.CreatedAtUtc);
+            }
+        }
+
         var adjustedSignals = raw.Signals.Select(s => s with
         {
             StopLoss = Math.Round(s.SpotPrice * slFactor, 2),
             TargetPrice = Math.Round(s.SpotPrice * tgtFactor, 2),
             OptionStopLoss = s.OptionLtp > 0 ? Math.Round(s.OptionLtp * slFactor, 2) : 0m,
-            OptionTarget = s.OptionLtp > 0 ? Math.Round(s.OptionLtp * tgtFactor, 2) : 0m
+            OptionTarget = s.OptionLtp > 0 ? Math.Round(s.OptionLtp * tgtFactor, 2) : 0m,
+            Timestamp = triggeredToday.TryGetValue(s.Symbol, out var trigAt) ? trigAt : s.Timestamp
         }).ToList();
 
         var result = raw with

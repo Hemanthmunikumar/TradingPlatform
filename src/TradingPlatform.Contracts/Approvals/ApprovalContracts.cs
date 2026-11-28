@@ -19,7 +19,8 @@ public record PendingTradeApprovalDto(
     DateTime? DecidedAtUtc,
     string? DecisionReason,
     double RemainingSeconds,
-    bool IsExpired
+    bool IsExpired,
+    DateTime? CreatedAtUtc = null
 );
 
 public record RejectApprovalRequest(

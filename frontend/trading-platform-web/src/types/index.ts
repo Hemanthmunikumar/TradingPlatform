@@ -183,6 +183,7 @@ export interface PendingTradeApprovalDto {
   decisionReason?: string;
   remainingSeconds: number;
   isExpired: boolean;
+  createdAtUtc?: string;
 }
 
 export interface IndianBrokerageChargesDto {

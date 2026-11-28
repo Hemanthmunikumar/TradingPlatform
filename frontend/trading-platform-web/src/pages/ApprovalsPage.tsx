@@ -268,7 +268,8 @@ export const ApprovalsPage: React.FC = () => {
             <table className="w-full text-left text-sm text-slate-300">
               <thead className="bg-slate-950/60 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
                 <tr>
-                  <th className="px-5 py-3">Symbol &amp; Reason</th>
+                  <th className="px-5 py-3">Symbol &amp; Why Triggered</th>
+                  <th className="px-5 py-3">Triggered At (IST)</th>
                   <th className="px-5 py-3">Deadline (IST)</th>
                   <th className="px-5 py-3">Quantity &amp; Value</th>
                   <th className="px-5 py-3">Status</th>
@@ -279,9 +280,12 @@ export const ApprovalsPage: React.FC = () => {
                   <tr key={a.id} className="hover:bg-slate-800/30">
                     <td className="px-5 py-3.5">
                       <div className="font-bold text-white">{a.symbol} ({a.side})</div>
-                      <div className="text-xs text-slate-400 max-w-md truncate">{a.reason}</div>
+                      <div className="text-xs text-slate-400 max-w-md">{a.reason}</div>
                     </td>
-                    <td className="px-5 py-3.5 text-xs text-slate-400 font-mono">
+                    <td className="px-5 py-3.5 text-xs text-sky-300 font-mono whitespace-nowrap">
+                      {formatIst(a.createdAtUtc || a.approvalDeadlineUtc)}
+                    </td>
+                    <td className="px-5 py-3.5 text-xs text-slate-400 font-mono whitespace-nowrap">
                       {formatIst(a.approvalDeadlineUtc)}
                     </td>
                     <td className="px-5 py-3.5">

@@ -1464,7 +1464,7 @@ export const AiMarketExpertPage: React.FC = () => {
                   </div>
                   <div className="text-[11px] text-slate-400 px-1 flex items-center gap-1">
                     <Clock size={11} className="text-sky-400" />
-                    Suggested: {formatIstTimestamp(sig.timestamp)}
+                    Condition Matched: {formatIstTimestamp(sig.timestamp)}
                   </div>
 
                   {/* 1-Click Trigger & 4-Stage Skill Check */}

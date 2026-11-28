@@ -117,6 +117,12 @@ def fetch_single_chart_quote(symbol: str) -> tuple[str, dict | None, list[float]
             if price <= 0 and valid_closes:
                 price = valid_closes[-1]
             gain_pct = round(((price - prev_close) / prev_close) * 100.0, 2) if prev_close > 0 else 0.0
+            mkt_ts = meta.get("regularMarketTime")
+            mkt_iso = (
+                datetime.fromtimestamp(int(mkt_ts), tz=timezone.utc).isoformat()
+                if mkt_ts
+                else datetime.now(timezone.utc).isoformat()
+            )
             quote = {
                 "symbol": symbol,
                 "name": meta.get("shortName") or meta.get("longName") or symbol,
@@ -127,6 +133,7 @@ def fetch_single_chart_quote(symbol: str) -> tuple[str, dict | None, list[float]
                 "low": low,
                 "volume": vol,
                 "change_percent": gain_pct,
+                "market_time": mkt_iso,
             }
             return symbol, quote, valid_closes
     except Exception:
@@ -321,7 +328,7 @@ def main():
             "newsHeadline": news_headline,
             "strategy": "Pre-Market F&O 1-2.5% Uptrend + 21 EMA Pullback",
             "timeframe": "Intraday (5m / Pre-market)",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": q.get("market_time") or datetime.now(timezone.utc).isoformat(),
         })
 
     # Prioritize POSITIVE news + ACTIVE_BUY_AT_21EMA first

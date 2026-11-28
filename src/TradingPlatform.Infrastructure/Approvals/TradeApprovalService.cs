@@ -289,7 +289,8 @@ public class TradeApprovalService(
             DecidedAtUtc: a.DecidedAtUtc,
             DecisionReason: a.DecisionReason,
             RemainingSeconds: Math.Round(remaining, 2),
-            IsExpired: isExpired
+            IsExpired: isExpired,
+            CreatedAtUtc: a.CreatedAtUtc
         );
     }
 }
