@@ -763,14 +763,28 @@ public class AiAdvisorController(
                 .ToListAsync(ct);
         }
 
+        var isLiveBroker = account.TradingMode == TradingMode.Live &&
+                           account.BrokerConnection.BrokerProvider.Code != BrokerCode.Mock;
+
         // Build holding diagnostics
         var holdingItems = new List<BrokerHoldingItemDto>();
         foreach (var pos in openPositions)
         {
             var sym = pos.Instrument.TradingSymbol;
-            var quote = await marketDataService.GetQuoteAsync(sym, "NSE", ct);
-            var currentPrice = quote.LastPrice > 0 ? quote.LastPrice : pos.AverageBuyPrice;
-            var dayChange = quote.ChangePercent;
+            decimal currentPrice;
+            decimal dayChange = 0m;
+
+            if (isLiveBroker)
+            {
+                // Use real broker-synced LTP (from Kite holdings/positions), never overwrite with mock 1000m prices
+                currentPrice = pos.CurrentPrice > 0 ? pos.CurrentPrice : pos.AverageBuyPrice;
+            }
+            else
+            {
+                var quote = await marketDataService.GetQuoteAsync(sym, "NSE", ct);
+                currentPrice = quote.LastPrice > 0 ? quote.LastPrice : pos.AverageBuyPrice;
+                dayChange = quote.ChangePercent;
+            }
 
             var totalVal = Math.Round(pos.Quantity * currentPrice, 2);
             var pnl = Math.Round((currentPrice - pos.AverageBuyPrice) * pos.Quantity, 2);

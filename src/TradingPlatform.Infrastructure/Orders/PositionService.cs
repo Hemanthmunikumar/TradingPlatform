@@ -219,18 +219,21 @@ public class PositionService(
         foreach (var pos in positions)
         {
             decimal currentLtp = pos.CurrentPrice;
-            try
+            if (pos.TradingMode != TradingMode.Live || currentLtp <= 0)
             {
-                var quote = await marketDataService.GetQuoteAsync(pos.Instrument.TradingSymbol, pos.Instrument.Exchange, ct);
-                if (quote != null && quote.LastPrice > 0)
+                try
                 {
-                    currentLtp = quote.LastPrice;
-                    pos.CurrentPrice = currentLtp;
+                    var quote = await marketDataService.GetQuoteAsync(pos.Instrument.TradingSymbol, pos.Instrument.Exchange, ct);
+                    if (quote != null && quote.LastPrice > 0)
+                    {
+                        currentLtp = quote.LastPrice;
+                        pos.CurrentPrice = currentLtp;
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to refresh quote for {Symbol}", pos.Instrument.TradingSymbol);
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to refresh quote for {Symbol}", pos.Instrument.TradingSymbol);
+                }
             }
 
             var unrealized = pos.IsOpen && pos.Quantity > 0 ? (currentLtp - pos.AverageBuyPrice) * pos.Quantity : 0m;
@@ -302,17 +305,20 @@ public class PositionService(
         if (pos == null) return null;
 
         decimal currentLtp = pos.CurrentPrice;
-        try
+        if (pos.TradingMode != TradingMode.Live || currentLtp <= 0)
         {
-            var quote = await marketDataService.GetQuoteAsync(pos.Instrument.TradingSymbol, pos.Instrument.Exchange, ct);
-            if (quote != null && quote.LastPrice > 0)
+            try
             {
-                currentLtp = quote.LastPrice;
+                var quote = await marketDataService.GetQuoteAsync(pos.Instrument.TradingSymbol, pos.Instrument.Exchange, ct);
+                if (quote != null && quote.LastPrice > 0)
+                {
+                    currentLtp = quote.LastPrice;
+                }
             }
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to refresh quote for {Symbol}", pos.Instrument.TradingSymbol);
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to refresh quote for {Symbol}", pos.Instrument.TradingSymbol);
+            }
         }
 
         var unrealized = pos.IsOpen && pos.Quantity > 0 ? (currentLtp - pos.AverageBuyPrice) * pos.Quantity : 0m;
