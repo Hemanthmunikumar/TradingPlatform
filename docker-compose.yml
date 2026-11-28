@@ -44,6 +44,10 @@ services:
       Email__SenderEmail: ${SMTP_USER:-}
       Email__SenderName: "StrikeSutra Alerts"
       Email__EnableRealSmtp: ${ENABLE_REAL_SMTP:-false}
+      AiAdvisor__GeminiApiKey: ${GEMINI_API_KEY:-}
+      AiAdvisor__Model: ${GEMINI_MODEL:-gemini-2.5-flash}
+    volumes:
+      - ./data/ai-config:/app/data
     ports:
       - "5000:5000"
     healthcheck:

@@ -1773,33 +1773,80 @@ export const AiMarketExpertPage: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">AI Provider</label>
                 <select
                   value={config.provider}
-                  onChange={(e) => setConfig({ ...config, provider: e.target.value })}
+                  onChange={(e) => {
+                    const p = e.target.value;
+                    const defaultModels: Record<string, string> = {
+                      GeminiPro: 'gemini-2.5-flash',
+                      OpenAI: 'gpt-4.1',
+                      Claude: 'claude-sonnet-4-20250514',
+                      DeepSeek: 'deepseek-reasoner',
+                      BuiltInQuant: 'quant-engine-v2',
+                    };
+                    setConfig({ ...config, provider: p, model: defaultModels[p] || 'gemini-2.5-flash' });
+                  }}
                   className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white"
                 >
-                  <option value="GeminiPro">Google Gemini Pro</option>
-                  <option value="BuiltInQuant">Built-in Quantitative Expert Engine</option>
-                  <option value="OpenAI">OpenAI (GPT-4o)</option>
-                  <option value="Claude">Anthropic Claude</option>
+                  <option value="GeminiPro">Google Gemini (Latest 2.5 — Recommended)</option>
+                  <option value="OpenAI">OpenAI (GPT-4.1 / GPT-4o)</option>
+                  <option value="Claude">Anthropic Claude (Sonnet 4)</option>
+                  <option value="DeepSeek">DeepSeek (R1 / V3)</option>
+                  <option value="BuiltInQuant">Built-in Quantitative Engine (No Key Needed)</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">Model Identifier</label>
-                <input
-                  type="text"
+                <select
                   value={config.model}
                   onChange={(e) => setConfig({ ...config, model: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono"
-                />
+                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono"
+                >
+                  {config.provider === 'GeminiPro' && (
+                    <>
+                      <option value="gemini-2.5-flash">gemini-2.5-flash (Latest Fast — Default)</option>
+                      <option value="gemini-2.5-pro">gemini-2.5-pro (Latest Deep Reasoning)</option>
+                      <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+                    </>
+                  )}
+                  {config.provider === 'OpenAI' && (
+                    <>
+                      <option value="gpt-4.1">gpt-4.1 (Latest — Default)</option>
+                      <option value="gpt-4o">gpt-4o</option>
+                      <option value="o3-mini">o3-mini</option>
+                    </>
+                  )}
+                  {config.provider === 'Claude' && (
+                    <>
+                      <option value="claude-sonnet-4-20250514">claude-sonnet-4-20250514 (Latest — Default)</option>
+                      <option value="claude-3-7-sonnet-latest">claude-3-7-sonnet-latest</option>
+                    </>
+                  )}
+                  {config.provider === 'DeepSeek' && (
+                    <>
+                      <option value="deepseek-reasoner">deepseek-reasoner (R1 — Default)</option>
+                      <option value="deepseek-chat">deepseek-chat (V3)</option>
+                    </>
+                  )}
+                  {config.provider === 'BuiltInQuant' && (
+                    <option value="quant-engine-v2">quant-engine-v2 (Local Deterministic)</option>
+                  )}
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">API Key</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-300">API Key</label>
+                  {config.hasApiKey && (
+                    <span className="text-[11px] font-semibold text-emerald-400">
+                      ✓ Configured ({config.activeSource === 'AppSettings' ? 'Server .env' : 'Saved'})
+                    </span>
+                  )}
+                </div>
                 <input
-                  type="password"
+                  type="text"
                   value={config.apiKey || ''}
                   onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                  placeholder={config.hasApiKey ? '•••••••••••••••• (Leave blank to keep existing)' : 'Paste API Key'}
+                  placeholder={config.hasApiKey ? 'Configured on server (paste new key to replace)' : 'Paste API Key'}
                   className="w-full px-3.5 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white font-mono"
                 />
               </div>

@@ -20,6 +20,7 @@ public class ConfigurableAiMarketAdvisorService(
 {
     private static AiAdvisorConfigDto? _uiOverrideConfig;
     private static readonly object _configLock = new();
+    private static readonly string ConfigFilePath = Path.Combine(AppContext.BaseDirectory, "data", "ai-advisor-config.json");
 
     private static string? MaskApiKey(string? key)
     {
@@ -28,15 +29,70 @@ public class ConfigurableAiMarketAdvisorService(
         return string.Concat(key.AsSpan(0, 4), "...", key.AsSpan(key.Length - 4));
     }
 
+    private static AiAdvisorConfigDto? LoadPersistedConfig()
+    {
+        try
+        {
+            if (File.Exists(ConfigFilePath))
+            {
+                var json = File.ReadAllText(ConfigFilePath);
+                return JsonSerializer.Deserialize<AiAdvisorConfigDto>(json);
+            }
+        }
+        catch { }
+        return null;
+    }
+
+    private static void SavePersistedConfig(AiAdvisorConfigDto? cfg)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(ConfigFilePath);
+            if (!string.IsNullOrWhiteSpace(dir)) Directory.CreateDirectory(dir);
+            if (cfg == null)
+            {
+                if (File.Exists(ConfigFilePath)) File.Delete(ConfigFilePath);
+            }
+            else
+            {
+                File.WriteAllText(ConfigFilePath, JsonSerializer.Serialize(cfg));
+            }
+        }
+        catch { }
+    }
+
     private AiAdvisorConfigDto GetEffectiveConfig()
     {
         lock (_configLock)
         {
-            if (_uiOverrideConfig != null) return _uiOverrideConfig;
+            _uiOverrideConfig ??= LoadPersistedConfig();
+            if (_uiOverrideConfig != null)
+            {
+                // If persisted override has no API key, fall back to .env key
+                if (string.IsNullOrWhiteSpace(_uiOverrideConfig.ApiKey))
+                {
+                    var envFallback = configuration["AiAdvisor:GeminiApiKey"] ?? configuration["GEMINI_API_KEY"];
+                    if (!string.IsNullOrWhiteSpace(envFallback))
+                    {
+                        return new AiAdvisorConfigDto
+                        {
+                            Provider = _uiOverrideConfig.Provider,
+                            ApiKey = envFallback,
+                            HasApiKey = true,
+                            Model = _uiOverrideConfig.Model,
+                            MinConfidenceThreshold = _uiOverrideConfig.MinConfidenceThreshold,
+                            EnableDipAccumulation = _uiOverrideConfig.EnableDipAccumulation,
+                            EnableSpecialWatchlist = _uiOverrideConfig.EnableSpecialWatchlist,
+                            ActiveSource = _uiOverrideConfig.ActiveSource
+                        };
+                    }
+                }
+                return _uiOverrideConfig;
+            }
 
             var provider = configuration["AiAdvisor:Provider"] ?? "GeminiPro";
             var envKey = configuration["AiAdvisor:GeminiApiKey"] ?? configuration["GEMINI_API_KEY"];
-            var model = configuration["AiAdvisor:Model"] ?? "gemini-1.5-pro";
+            var model = configuration["AiAdvisor:Model"] ?? "gemini-2.5-flash";
             var minConv = decimal.TryParse(configuration["AiAdvisor:MinConvictionThreshold"], out var mc) ? mc : 0.80m;
             var dip = !bool.TryParse(configuration["AiAdvisor:EnableDipAccumulation"], out var d) || d;
             var spec = !bool.TryParse(configuration["AiAdvisor:EnableSpecialWatchlist"], out var s) || s;
@@ -78,13 +134,15 @@ public class ConfigurableAiMarketAdvisorService(
     {
         lock (_configLock)
         {
+            var current = GetEffectiveConfig();
             string? effectiveApiKey = updateDto.ApiKey;
-            // If ApiKey was masked (e.g. contains ***), preserve the previous key
-            if (!string.IsNullOrWhiteSpace(updateDto.ApiKey) && updateDto.ApiKey.Contains("***"))
+            // Preserve existing key if input is blank or masked
+            if (string.IsNullOrWhiteSpace(effectiveApiKey)
+                || effectiveApiKey.Contains("...")
+                || effectiveApiKey.Contains("***")
+                || effectiveApiKey.Contains("•••"))
             {
-                effectiveApiKey = _uiOverrideConfig?.ApiKey 
-                    ?? configuration["AiAdvisor:GeminiApiKey"] 
-                    ?? configuration["GEMINI_API_KEY"];
+                effectiveApiKey = current.ApiKey;
             }
 
             _uiOverrideConfig = new AiAdvisorConfigDto
@@ -92,14 +150,16 @@ public class ConfigurableAiMarketAdvisorService(
                 Provider = string.IsNullOrWhiteSpace(updateDto.Provider) ? "GeminiPro" : updateDto.Provider,
                 ApiKey = effectiveApiKey,
                 HasApiKey = !string.IsNullOrWhiteSpace(effectiveApiKey),
-                Model = string.IsNullOrWhiteSpace(updateDto.Model) ? "gemini-1.5-pro" : updateDto.Model,
+                Model = string.IsNullOrWhiteSpace(updateDto.Model) ? "gemini-2.5-flash" : updateDto.Model,
                 MinConfidenceThreshold = updateDto.MinConfidenceThreshold > 0 ? updateDto.MinConfidenceThreshold : 0.80m,
                 EnableDipAccumulation = updateDto.EnableDipAccumulation,
                 EnableSpecialWatchlist = updateDto.EnableSpecialWatchlist,
                 ActiveSource = "UI"
             };
 
-            logger.LogInformation("AI Advisor configuration updated from UI: Provider={Provider}, Model={Model}", _uiOverrideConfig.Provider, _uiOverrideConfig.Model);
+            SavePersistedConfig(_uiOverrideConfig);
+            logger.LogInformation("AI Advisor configuration persisted from UI: Provider={Provider}, Model={Model}, MinConv={MinConv}",
+                _uiOverrideConfig.Provider, _uiOverrideConfig.Model, _uiOverrideConfig.MinConfidenceThreshold);
             return GetConfigurationAsync(ct);
         }
     }
@@ -109,6 +169,7 @@ public class ConfigurableAiMarketAdvisorService(
         lock (_configLock)
         {
             _uiOverrideConfig = null;
+            SavePersistedConfig(null);
             logger.LogInformation("AI Advisor configuration reset to appsettings.json defaults.");
             return GetConfigurationAsync(ct);
         }
