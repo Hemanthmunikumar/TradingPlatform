@@ -135,10 +135,54 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
         // Enforce SEBI/NSE retail algo rate limit before dispatching live order
         await EnforceOrderRateLimitAsync(cancellationToken);
 
-        _logger.LogInformation("LIVE ZERODHA [Tag:{Tag}]: Placing {Side} {Qty} of {Token} on account {Account}",
-            SelfAlgoOrderTag, request.Side, request.Quantity, request.InstrumentToken, account.AccountId);
+        try
+        {
+            using var req = CreateKiteRequest(HttpMethod.Post, "https://api.kite.trade/orders/regular", connection);
+            var form = new Dictionary<string, string>
+            {
+                ["exchange"] = request.Exchange,
+                ["tradingsymbol"] = request.TradingSymbol,
+                ["transaction_type"] = request.Side == OrderSide.Buy ? "BUY" : "SELL",
+                ["quantity"] = request.Quantity.ToString(),
+                ["product"] = request.ProductType == ProductType.CNC ? "CNC" : "MIS",
+                ["order_type"] = request.OrderType switch
+                {
+                    OrderType.Limit => "LIMIT",
+                    OrderType.StopLoss => "SL",
+                    _ => "MARKET"
+                },
+                ["validity"] = "DAY",
+                ["tag"] = SelfAlgoOrderTag
+            };
+            if (request.Price > 0 && request.OrderType != OrderType.Market)
+            {
+                form["price"] = request.Price.ToString("0.00");
+            }
+            if (request.TriggerPrice.HasValue && request.TriggerPrice.Value > 0)
+            {
+                form["trigger_price"] = request.TriggerPrice.Value.ToString("0.00");
+            }
+            req.Content = new FormUrlEncodedContent(form);
 
-        return new OrderResponse(true, $"ZERODHA-{Guid.NewGuid():N}", OrderStatus.Submitted, $"Live order placed with Zerodha (Tag: {SelfAlgoOrderTag})");
+            var res = await _httpClient.SendAsync(req, cancellationToken);
+            if (res.IsSuccessStatusCode)
+            {
+                var body = await res.Content.ReadFromJsonAsync<KiteOrderPlaceResponse>(cancellationToken: cancellationToken);
+                var orderId = body?.Data?.OrderId ?? $"ZERODHA-{Guid.NewGuid():N}";
+                _logger.LogInformation("LIVE ZERODHA [Tag:{Tag}]: Order {OrderId} placed for {Side} {Qty} {Symbol}",
+                    SelfAlgoOrderTag, orderId, request.Side, request.Quantity, request.TradingSymbol);
+                return new OrderResponse(true, orderId, OrderStatus.Submitted, $"Live order placed with Zerodha (Tag: {SelfAlgoOrderTag})");
+            }
+
+            var errText = await res.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogWarning("Zerodha live order rejected: {Error}", errText);
+            return new OrderResponse(false, string.Empty, OrderStatus.Rejected, $"Zerodha rejected order: {errText}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Exception placing Zerodha live order");
+            return new OrderResponse(false, string.Empty, OrderStatus.Error, ex.Message);
+        }
     }
 
     private static async Task EnforceOrderRateLimitAsync(CancellationToken cancellationToken)
@@ -185,21 +229,194 @@ public class ZerodhaBrokerAdapter : IBrokerAdapter, IBrokerAuthentication, IMark
         return Task.FromResult<OrderDetails?>(null);
     }
 
-    public Task<IReadOnlyList<OrderDetails>> GetOrderBookAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<OrderDetails>> GetOrderBookAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<IReadOnlyList<OrderDetails>>([]);
+        if (string.IsNullOrWhiteSpace(connection.EncryptedAccessToken))
+            return [];
+
+        try
+        {
+            using var req = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/orders", connection);
+            var res = await _httpClient.SendAsync(req, cancellationToken);
+            if (!res.IsSuccessStatusCode) return [];
+
+            var body = await res.Content.ReadFromJsonAsync<KiteOrdersResponse>(cancellationToken: cancellationToken);
+            if (body?.Data == null) return [];
+
+            return body.Data.Select(o => new OrderDetails(
+                BrokerOrderId: o.OrderId ?? string.Empty,
+                TradingSymbol: o.TradingSymbol ?? string.Empty,
+                Side: string.Equals(o.TransactionType, "SELL", StringComparison.OrdinalIgnoreCase) ? OrderSide.Sell : OrderSide.Buy,
+                OrderType: o.OrderType == "LIMIT" ? OrderType.Limit : OrderType.Market,
+                ProductType: o.Product == "CNC" ? ProductType.CNC : ProductType.MIS,
+                Quantity: o.Quantity,
+                FilledQuantity: o.FilledQuantity,
+                Price: o.Price,
+                AveragePrice: o.AveragePrice,
+                Status: o.Status?.ToUpperInvariant() switch
+                {
+                    "COMPLETE" => OrderStatus.Filled,
+                    "CANCELLED" => OrderStatus.Cancelled,
+                    "REJECTED" => OrderStatus.Rejected,
+                    _ => OrderStatus.Open
+                },
+                StatusMessage: o.StatusMessage,
+                CreatedAtUtc: DateTime.UtcNow,
+                UpdatedAtUtc: null
+            )).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed fetching Zerodha order book");
+            return [];
+        }
     }
 
-    public Task<IReadOnlyList<PositionDetails>> GetPositionsAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<PositionDetails>> GetPositionsAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<IReadOnlyList<PositionDetails>>([]);
+        if (string.IsNullOrWhiteSpace(connection.EncryptedAccessToken))
+            return [];
+
+        var results = new List<PositionDetails>();
+        try
+        {
+            // 1. Fetch CNC Holdings (existing delivery portfolio)
+            using var holdReq = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/portfolio/holdings", connection);
+            var holdRes = await _httpClient.SendAsync(holdReq, cancellationToken);
+            if (holdRes.IsSuccessStatusCode)
+            {
+                var holdBody = await holdRes.Content.ReadFromJsonAsync<KiteHoldingsResponse>(cancellationToken: cancellationToken);
+                if (holdBody?.Data != null)
+                {
+                    foreach (var h in holdBody.Data)
+                    {
+                        var qty = h.Quantity + h.T1Quantity;
+                        if (qty <= 0 || string.IsNullOrWhiteSpace(h.TradingSymbol)) continue;
+                        results.Add(new PositionDetails(
+                            InstrumentToken: h.Exchange ?? "NSE",
+                            TradingSymbol: h.TradingSymbol,
+                            ProductType: ProductType.CNC,
+                            Quantity: qty,
+                            AverageBuyPrice: h.AveragePrice,
+                            CurrentPrice: h.LastPrice > 0 ? h.LastPrice : h.AveragePrice,
+                            RealizedPnL: 0m,
+                            UnrealizedPnL: h.PnL
+                        ));
+                    }
+                }
+            }
+
+            // 2. Fetch Net Intraday / F&O Positions
+            using var posReq = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/portfolio/positions", connection);
+            var posRes = await _httpClient.SendAsync(posReq, cancellationToken);
+            if (posRes.IsSuccessStatusCode)
+            {
+                var posBody = await posRes.Content.ReadFromJsonAsync<KitePositionsResponse>(cancellationToken: cancellationToken);
+                if (posBody?.Data?.Net != null)
+                {
+                    foreach (var p in posBody.Data.Net)
+                    {
+                        if (p.Quantity == 0 || string.IsNullOrWhiteSpace(p.TradingSymbol)) continue;
+                        results.Add(new PositionDetails(
+                            InstrumentToken: p.Exchange ?? "NSE",
+                            TradingSymbol: p.TradingSymbol,
+                            ProductType: p.Product == "CNC" ? ProductType.CNC : ProductType.MIS,
+                            Quantity: p.Quantity,
+                            AverageBuyPrice: p.AveragePrice,
+                            CurrentPrice: p.LastPrice > 0 ? p.LastPrice : p.AveragePrice,
+                            RealizedPnL: 0m,
+                            UnrealizedPnL: p.Unrealized
+                        ));
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed fetching Zerodha holdings/positions");
+        }
+
+        return results;
     }
 
-    public Task<FundsDetails> GetFundsAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
+    public async Task<FundsDetails> GetFundsAsync(BrokerConnection connection, TradingAccount account, CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(new FundsDetails(account.AvailableFunds, 0m, account.AvailableFunds, 0m));
+        if (string.IsNullOrWhiteSpace(connection.EncryptedAccessToken))
+            return new FundsDetails(account.AvailableFunds, 0m, account.AvailableFunds, 0m);
+
+        try
+        {
+            using var req = CreateKiteRequest(HttpMethod.Get, "https://api.kite.trade/user/margins", connection);
+            var res = await _httpClient.SendAsync(req, cancellationToken);
+            if (!res.IsSuccessStatusCode)
+                return new FundsDetails(account.AvailableFunds, 0m, account.AvailableFunds, 0m);
+
+            var body = await res.Content.ReadFromJsonAsync<KiteMarginsResponse>(cancellationToken: cancellationToken);
+            var eq = body?.Data?.Equity;
+            if (eq != null)
+            {
+                var cash = eq.Available?.Cash ?? eq.Net;
+                var used = eq.Utilised?.Debits ?? 0m;
+                return new FundsDetails(cash, used, eq.Net, eq.Available?.Collateral ?? 0m);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed fetching Zerodha margins");
+        }
+
+        return new FundsDetails(account.AvailableFunds, 0m, account.AvailableFunds, 0m);
+    }
+
+    private HttpRequestMessage CreateKiteRequest(HttpMethod method, string url, BrokerConnection connection)
+    {
+        var apiKey = _encryptionService.Decrypt(connection.EncryptedApiKey);
+        var accessToken = _encryptionService.Decrypt(connection.EncryptedAccessToken!);
+        var req = new HttpRequestMessage(method, url);
+        req.Headers.TryAddWithoutValidation("X-Kite-Version", "3");
+        req.Headers.TryAddWithoutValidation("Authorization", $"token {apiKey}:{accessToken}");
+        return req;
     }
 
     private record KiteTokenResponse(KiteData? Data);
     private record KiteData(string? AccessToken);
+    private record KiteOrderPlaceResponse(KiteOrderIdData? Data);
+    private record KiteOrderIdData(string? OrderId);
+    private record KiteOrdersResponse(List<KiteOrderItem>? Data);
+    private record KiteOrderItem(
+        [property: System.Text.Json.Serialization.JsonPropertyName("order_id")] string? OrderId,
+        [property: System.Text.Json.Serialization.JsonPropertyName("tradingsymbol")] string? TradingSymbol,
+        [property: System.Text.Json.Serialization.JsonPropertyName("transaction_type")] string? TransactionType,
+        [property: System.Text.Json.Serialization.JsonPropertyName("order_type")] string? OrderType,
+        string? Product,
+        int Quantity,
+        [property: System.Text.Json.Serialization.JsonPropertyName("filled_quantity")] int FilledQuantity,
+        decimal Price,
+        [property: System.Text.Json.Serialization.JsonPropertyName("average_price")] decimal AveragePrice,
+        string? Status,
+        [property: System.Text.Json.Serialization.JsonPropertyName("status_message")] string? StatusMessage);
+    private record KiteHoldingsResponse(List<KiteHoldingItem>? Data);
+    private record KiteHoldingItem(
+        [property: System.Text.Json.Serialization.JsonPropertyName("tradingsymbol")] string? TradingSymbol,
+        string? Exchange,
+        int Quantity,
+        [property: System.Text.Json.Serialization.JsonPropertyName("t1_quantity")] int T1Quantity,
+        [property: System.Text.Json.Serialization.JsonPropertyName("average_price")] decimal AveragePrice,
+        [property: System.Text.Json.Serialization.JsonPropertyName("last_price")] decimal LastPrice,
+        decimal PnL);
+    private record KitePositionsResponse(KitePositionsData? Data);
+    private record KitePositionsData(List<KitePositionItem>? Net);
+    private record KitePositionItem(
+        [property: System.Text.Json.Serialization.JsonPropertyName("tradingsymbol")] string? TradingSymbol,
+        string? Exchange,
+        string? Product,
+        int Quantity,
+        [property: System.Text.Json.Serialization.JsonPropertyName("average_price")] decimal AveragePrice,
+        [property: System.Text.Json.Serialization.JsonPropertyName("last_price")] decimal LastPrice,
+        decimal Unrealized);
+    private record KiteMarginsResponse(KiteMarginsData? Data);
+    private record KiteMarginsData(KiteEquityMargin? Equity);
+    private record KiteEquityMargin(decimal Net, KiteAvailableMargin? Available, KiteUtilisedMargin? Utilised);
+    private record KiteAvailableMargin(decimal Cash, decimal Collateral);
+    private record KiteUtilisedMargin(decimal Debits);
 }

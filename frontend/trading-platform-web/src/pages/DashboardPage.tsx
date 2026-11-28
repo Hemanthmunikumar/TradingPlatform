@@ -52,7 +52,7 @@ export const DashboardPage: React.FC = () => {
   const activeAccountsCount = accounts.filter((a) => a.isActive).length;
   const liveAccountsCount = accounts.filter((a) => a.tradingMode === 'Live').length;
   const activeAccount = accounts.find((a) => a.isActive) || accounts[0];
-  const rejectionWindowSeconds = activeAccount?.configuration?.approvalDurationSeconds || 2;
+  const rejectionWindowSeconds = activeAccount?.configuration?.approvalDurationSeconds || 60;
 
   const formatINR = (val: number) => {
     return new Intl.NumberFormat('en-IN', {

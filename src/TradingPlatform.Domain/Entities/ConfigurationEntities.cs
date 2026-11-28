@@ -18,7 +18,7 @@ public class AccountConfiguration : BaseEntity, IMustHaveTenant
     public decimal MaxExposurePerStockPercent { get; set; } = 20.0m;
     public int MaxTradesPerDay { get; set; } = 10;
     public bool StopLossRequired { get; set; } = true;
-    public int ApprovalDurationSeconds { get; set; } = 2;
+    public int ApprovalDurationSeconds { get; set; } = 60;
     public bool AutoExecuteOnTimeout { get; set; } // default false for live accounts
     public bool KillSwitchActive { get; set; }
     public TimeOnly TradingScheduleStart { get; set; } = new(9, 15);

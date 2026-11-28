@@ -287,6 +287,7 @@ public class OrderService(
             .Include(o => o.Instrument)
             .Include(o => o.Events)
             .Include(o => o.Executions)
+            .Where(o => o.TradingAccount.IsActive && o.TradingAccount.BrokerConnection.IsActive)
             .AsQueryable();
 
         if (filter.TradingAccountId.HasValue)

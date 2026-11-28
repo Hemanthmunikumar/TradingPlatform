@@ -73,6 +73,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddHealthChecks();
     builder.Services.AddHostedService<ApprovalTimeoutHostedService>();
+    builder.Services.AddHostedService<MarketMonitorHostedService>();
 
     // SignalR Real-Time Hub & Notification Service
     builder.Services.AddSignalR();

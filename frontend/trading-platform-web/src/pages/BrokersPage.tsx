@@ -228,11 +228,34 @@ export const BrokersPage: React.FC = () => {
       if (res.data.success) {
         setSuccessMsg(`Switched broker connection to ${newMode} Trading mode!`);
         await fetchData();
+        window.dispatchEvent(new Event('broker-state-changed'));
       } else {
         setError(res.data.message || 'Failed to switch trading mode.');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to switch trading mode.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (connectionId: string) => {
+    setIsLoading(true);
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await apiClient.post<ApiResponse<BrokerConnectionDto>>(
+        `/brokers/connections/${connectionId}/toggle-active`
+      );
+      if (res.data.success && res.data.data) {
+        setSuccessMsg(res.data.message || 'Broker status updated.');
+        await fetchData();
+        window.dispatchEvent(new Event('broker-state-changed'));
+      } else {
+        setError(res.data.message || 'Failed to toggle broker status.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to toggle broker status.');
     } finally {
       setIsLoading(false);
     }
@@ -346,11 +369,13 @@ export const BrokersPage: React.FC = () => {
         {connections.map((conn) => (
           <div
             key={conn.id}
-            className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden"
+            className={`bg-slate-900 border rounded-xl p-5 flex flex-col justify-between shadow-md relative overflow-hidden transition ${
+              conn.isActive ? 'border-slate-800' : 'border-slate-800/50 opacity-60'
+            }`}
           >
             {/* Top decorative badge & Actions */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                   {conn.providerCode}
                 </span>
@@ -371,15 +396,29 @@ export const BrokersPage: React.FC = () => {
                 </button>
               </div>
 
-              {conn.providerCode !== 'Mock' && (
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => handleDeleteConnection(conn.id, conn.displayName)}
-                  title="Remove broker connection"
-                  className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                  type="button"
+                  onClick={() => handleToggleActive(conn.id)}
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border transition cursor-pointer ${
+                    conn.isActive
+                      ? 'bg-sky-500/15 text-sky-300 border-sky-500/30 hover:bg-sky-500/25'
+                      : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                  }`}
+                  title={conn.isActive ? 'Click to disable this broker across the entire app' : 'Click to enable this broker'}
                 >
-                  <Trash2 size={15} />
+                  {conn.isActive ? '● Enabled' : '○ Disabled'}
                 </button>
-              )}
+                {conn.providerCode !== 'Mock' && (
+                  <button
+                    onClick={() => handleDeleteConnection(conn.id, conn.displayName)}
+                    title="Remove broker connection"
+                    className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-4">

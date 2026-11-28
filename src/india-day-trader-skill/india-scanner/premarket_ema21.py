@@ -11,6 +11,7 @@ import argparse
 import urllib.request
 import urllib.parse
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 POSITIVE_NEWS_KW = (
@@ -90,42 +91,63 @@ def compute_ema(prices: list[float], period: int = 21) -> float:
     return round(ema, 2)
 
 
-def fetch_yahoo_quotes(symbols: list[str]) -> dict:
-    """Fetches real-time / last close quotes for NSE F&O symbols."""
-    results = {}
-    if not symbols:
-        return results
-
-    formatted = [f"{s}.NS" if not s.endswith(".NS") and not s.endswith(".BO") else s for s in symbols]
-    chunk_size = 20
+def fetch_single_chart_quote(symbol: str) -> tuple[str, dict | None, list[float]]:
+    """Fetches quote metadata + 5m bars using Yahoo Finance v8 chart API (v7 quote returns 401)."""
+    formatted = f"{symbol}.NS" if not symbol.endswith(".NS") and not symbol.endswith(".BO") else symbol
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{formatted}?interval=5m&range=2d"
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
     }
 
-    for i in range(0, len(formatted), chunk_size):
-        chunk = formatted[i:i + chunk_size]
-        url = f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={','.join(chunk)}"
-        try:
-            req = urllib.request.Request(url, headers=headers)
-            with urllib.request.urlopen(req, timeout=6) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                for item in data.get("quoteResponse", {}).get("result", []):
-                    sym = item.get("symbol", "").replace(".NS", "").replace(".BO", "")
-                    results[sym] = {
-                        "symbol": sym,
-                        "name": item.get("shortName") or item.get("longName") or sym,
-                        "price": float(item.get("regularMarketPrice", 0.0)),
-                        "prev_close": float(item.get("regularMarketPreviousClose", 0.0)),
-                        "open": float(item.get("regularMarketOpen", 0.0)),
-                        "high": float(item.get("regularMarketDayHigh", 0.0)),
-                        "low": float(item.get("regularMarketDayLow", 0.0)),
-                        "volume": int(item.get("regularMarketVolume", 0)),
-                        "change_percent": float(item.get("regularMarketChangePercent", 0.0)),
-                    }
-        except Exception:
-            pass
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=6) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            chart = data.get("chart", {}).get("result", [])
+            if not chart:
+                return symbol, None, []
+            meta = chart[0].get("meta", {})
+            price = float(meta.get("regularMarketPrice") or 0.0)
+            prev_close = float(meta.get("chartPreviousClose") or meta.get("previousClose") or 0.0)
+            high = float(meta.get("regularMarketDayHigh") or price)
+            low = float(meta.get("regularMarketDayLow") or price)
+            vol = int(meta.get("regularMarketVolume") or 0)
+            closes = chart[0].get("indicators", {}).get("quote", [{}])[0].get("close", [])
+            valid_closes = [float(c) for c in closes if c is not None]
+            if price <= 0 and valid_closes:
+                price = valid_closes[-1]
+            gain_pct = round(((price - prev_close) / prev_close) * 100.0, 2) if prev_close > 0 else 0.0
+            quote = {
+                "symbol": symbol,
+                "name": meta.get("shortName") or meta.get("longName") or symbol,
+                "price": price,
+                "prev_close": prev_close,
+                "open": float(meta.get("regularMarketOpen") or prev_close),
+                "high": high,
+                "low": low,
+                "volume": vol,
+                "change_percent": gain_pct,
+            }
+            return symbol, quote, valid_closes
+    except Exception:
+        return symbol, None, []
 
-    return results
+
+def fetch_yahoo_quotes(symbols: list[str]) -> tuple[dict, dict]:
+    """Fetches real-time quotes and 5m bars in parallel via Yahoo v8 chart endpoint."""
+    quotes = {}
+    bars_map = {}
+    if not symbols:
+        return quotes, bars_map
+
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for sym, q, bars in pool.map(fetch_single_chart_quote, symbols):
+            if q and q["price"] > 0:
+                quotes[sym] = q
+            if bars:
+                bars_map[sym] = bars
+
+    return quotes, bars_map
 
 
 def fetch_chart_bars(symbol: str, interval: str = "5m", range_str: str = "5d") -> list[float]:
@@ -201,7 +223,7 @@ def main():
 
     args = parser.parse_args()
     target_symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()] if args.symbols else load_fo_universe(limit=30)
-    quotes = fetch_yahoo_quotes(target_symbols)
+    quotes, bars_map = fetch_yahoo_quotes(target_symbols)
 
     hits = []
     for sym in target_symbols:
@@ -252,7 +274,7 @@ def main():
             continue
 
         # Rule 6: Intraday 5m 21 EMA Pullback check
-        bars = fetch_chart_bars(sym, interval="5m", range_str="5d")
+        bars = bars_map.get(sym) or fetch_chart_bars(sym, interval="5m", range_str="5d")
         if bars and len(bars) >= 10:
             ema21 = compute_ema(bars, period=21)
         else:

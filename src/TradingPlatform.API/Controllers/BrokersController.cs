@@ -58,6 +58,10 @@ public class BrokersController(ISender sender) : ControllerBase
         {
             return NotFound(ApiResponse<object>.Fail(ex.Message));
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     [HttpPost("connections/{id:guid}/exchange-token")]
@@ -85,6 +89,27 @@ public class BrokersController(ISender sender) : ControllerBase
         {
             var result = await sender.Send(new ToggleTradingModeCommand(id, request.TradingMode), cancellationToken);
             return Ok(ApiResponse<BrokerConnectionDto>.Ok(result, $"Trading mode changed to {request.TradingMode}."));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(ApiResponse<object>.Fail(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
+    }
+
+    [HttpPost("connections/{id:guid}/toggle-active")]
+    [ProducesResponseType(typeof(ApiResponse<BrokerConnectionDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ToggleBrokerActive(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await sender.Send(new ToggleBrokerActiveCommand(id), cancellationToken);
+            var stateLabel = result.IsActive ? "enabled" : "disabled";
+            return Ok(ApiResponse<BrokerConnectionDto>.Ok(result, $"Broker connection {stateLabel}."));
         }
         catch (KeyNotFoundException ex)
         {

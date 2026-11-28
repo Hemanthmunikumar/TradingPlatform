@@ -35,7 +35,7 @@ export const AccountSettingsPage: React.FC = () => {
     maxExposurePerStockPercent: 25.0,
     maxTradesPerDay: 20,
     stopLossRequired: true,
-    approvalDurationSeconds: 5,
+    approvalDurationSeconds: 60,
     autoExecuteOnTimeout: true,
     killSwitchActive: false,
     tradingScheduleStart: '09:15:00',

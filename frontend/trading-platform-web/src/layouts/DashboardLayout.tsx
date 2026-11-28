@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -16,13 +16,38 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { NotificationCenter } from '../components/NotificationCenter';
+import { apiClient } from '../api/client';
+import type { ApiResponse, BrokerConnectionDto } from '../types';
 
 export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [tradingMode] = useState<'Paper' | 'Live'>('Paper');
+  const [tradingMode, setTradingMode] = useState<'Paper' | 'Live' | 'None'>('Paper');
   const [isKillSwitchActive] = useState(false);
+
+  const syncHeaderTradingMode = useCallback(async () => {
+    try {
+      const res = await apiClient.get<ApiResponse<BrokerConnectionDto[]>>('/brokers/connections');
+      const activeConns = (res.data.data || []).filter((c) => c.isActive && c.isAuthenticated);
+      if (activeConns.length === 0) {
+        setTradingMode('None');
+      } else if (activeConns.some((c) => c.tradingMode === 'Live')) {
+        setTradingMode('Live');
+      } else {
+        setTradingMode('Paper');
+      }
+    } catch {
+      // Keep current state on transient failure
+    }
+  }, []);
+
+  useEffect(() => {
+    syncHeaderTradingMode();
+    const handler = () => syncHeaderTradingMode();
+    window.addEventListener('broker-state-changed', handler);
+    return () => window.removeEventListener('broker-state-changed', handler);
+  }, [syncHeaderTradingMode, location.pathname]);
 
   const navItems = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -59,18 +84,20 @@ export const DashboardLayout: React.FC = () => {
 
         {/* Global Trading Status Pills */}
         <div className="flex items-center gap-2.5">
-          {/* Trading Mode Badge (Clickable link to Settings) */}
+          {/* Trading Mode Badge (Clickable link to Brokers/Settings) */}
           <Link 
-            to="/settings"
-            title="Click to switch between Paper and Live Trading"
+            to={tradingMode === 'None' ? '/brokers' : '/settings'}
+            title="Click to manage Broker Mode or Risk Settings"
             className={`px-2.5 py-1 rounded-full text-xs font-semibold tracking-wider uppercase flex items-center gap-1.5 transition hover:scale-105 cursor-pointer ${
-              tradingMode === 'Paper' 
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20' 
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse hover:bg-rose-500/20'
+              tradingMode === 'Live'
+                ? 'bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse hover:bg-rose-500/20'
+                : tradingMode === 'None'
+                  ? 'bg-slate-800 text-slate-400 border border-slate-700 hover:bg-slate-700'
+                  : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${tradingMode === 'Paper' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
-            {tradingMode} Trading
+            <span className={`w-2 h-2 rounded-full ${tradingMode === 'Live' ? 'bg-rose-400' : tradingMode === 'None' ? 'bg-slate-500' : 'bg-emerald-400'}`} />
+            {tradingMode === 'None' ? 'No Active Broker' : `${tradingMode} Trading`}
           </Link>
 
           {/* Kill Switch Indicator */}

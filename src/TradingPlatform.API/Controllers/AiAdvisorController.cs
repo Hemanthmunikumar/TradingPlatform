@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TradingPlatform.Application.Common;
 using TradingPlatform.Application.Interfaces.AI;
+using TradingPlatform.Application.Interfaces.Adapters;
 using TradingPlatform.Application.Interfaces.Approvals;
 using TradingPlatform.Application.Interfaces.MarketData;
 using TradingPlatform.Contracts.Approvals;
@@ -22,6 +23,7 @@ public class AiAdvisorController(
     ITradingDbContext dbContext,
     ICurrentUserService currentUserService,
     IMarketDataService marketDataService,
+    IBrokerAdapterFactory brokerAdapterFactory,
     ILogger<AiAdvisorController> logger) : ControllerBase
 {
     private static readonly HashSet<string> KnownIndianStocks = new(StringComparer.OrdinalIgnoreCase)
@@ -454,7 +456,7 @@ public class AiAdvisorController(
             .FirstOrDefaultAsync(i => i.TradingSymbol == request.Symbol, ct)
             ?? await dbContext.Instruments.FirstAsync(ct);
 
-        var durationSeconds = activeAccount.Configuration?.ApprovalDurationSeconds ?? 2;
+        var durationSeconds = activeAccount.Configuration?.ApprovalDurationSeconds ?? 60;
         var approvalRequest = new CreateTradeApprovalRequest(
             TradingAccountId: activeAccount.Id,
             InstrumentId: inst.Id,
@@ -484,6 +486,7 @@ public class AiAdvisorController(
             .Include(a => a.BrokerConnection)
                 .ThenInclude(bc => bc.BrokerProvider)
             .Include(a => a.Configuration)
+            .Where(a => a.IsActive && a.BrokerConnection.IsActive)
             .ToListAsync(ct);
 
         TradingAccount? account = null;
@@ -499,11 +502,69 @@ public class AiAdvisorController(
 
         if (account == null)
         {
-            return NotFound(ApiResponse<BrokerSyncResponse>.Fail("No trading account found."));
+            return NotFound(ApiResponse<BrokerSyncResponse>.Fail("No active enabled broker account found. Enable a broker on the Brokers page."));
         }
 
         var isPaper = account.TradingMode == TradingMode.Paper;
         var brokerName = account.BrokerConnection?.DisplayName ?? "Zerodha Kite";
+
+        // If Zerodha is authenticated, sync real CNC holdings & intraday positions from Kite Connect v3
+        if (account.BrokerConnection?.BrokerProvider?.Code == BrokerCode.Zerodha && account.BrokerConnection.IsAuthenticated)
+        {
+            try
+            {
+                var zerodhaAdapter = brokerAdapterFactory.GetAdapter(BrokerCode.Zerodha);
+                var livePositions = await zerodhaAdapter.Positions.GetPositionsAsync(account.BrokerConnection, account, ct);
+                if (livePositions.Count > 0)
+                {
+                    foreach (var lp in livePositions)
+                    {
+                        var inst = await dbContext.Instruments.FirstOrDefaultAsync(i => i.TradingSymbol == lp.TradingSymbol, ct);
+                        if (inst == null)
+                        {
+                            inst = new Instrument
+                            {
+                                TradingSymbol = lp.TradingSymbol,
+                                Exchange = string.IsNullOrWhiteSpace(lp.InstrumentToken) ? "NSE" : lp.InstrumentToken,
+                                CompanyName = lp.TradingSymbol,
+                                LotSize = 1,
+                                TickSize = 0.05m
+                            };
+                            dbContext.Instruments.Add(inst);
+                            await dbContext.SaveChangesAsync(ct);
+                        }
+
+                        var existingPos = await dbContext.Positions.FirstOrDefaultAsync(
+                            p => p.TradingAccountId == account.Id && p.InstrumentId == inst.Id && p.IsOpen && p.ProductType == lp.ProductType, ct);
+                        if (existingPos == null)
+                        {
+                            dbContext.Positions.Add(new Position
+                            {
+                                UserId = account.UserId,
+                                TradingAccountId = account.Id,
+                                InstrumentId = inst.Id,
+                                Quantity = lp.Quantity,
+                                AverageBuyPrice = lp.AverageBuyPrice,
+                                CurrentPrice = lp.CurrentPrice > 0 ? lp.CurrentPrice : lp.AverageBuyPrice,
+                                ProductType = lp.ProductType,
+                                IsOpen = true
+                            });
+                        }
+                        else
+                        {
+                            existingPos.Quantity = lp.Quantity;
+                            existingPos.AverageBuyPrice = lp.AverageBuyPrice;
+                            if (lp.CurrentPrice > 0) existingPos.CurrentPrice = lp.CurrentPrice;
+                        }
+                    }
+                    await dbContext.SaveChangesAsync(ct);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Live Zerodha portfolio sync failed; falling back to local positions.");
+            }
+        }
 
         // Fetch open positions
         var openPositions = await dbContext.Positions
@@ -511,8 +572,8 @@ public class AiAdvisorController(
             .Where(p => p.TradingAccountId == account.Id && p.IsOpen)
             .ToListAsync(ct);
 
-        // If in paper mode and no positions yet, seed 3 realistic Zerodha paper holdings
-        if (isPaper && openPositions.Count == 0)
+        // If in paper mode on Mock Simulator and no positions yet, seed 3 paper holdings
+        if (isPaper && account.BrokerConnection?.BrokerProvider?.Code == BrokerCode.Mock && openPositions.Count == 0)
         {
             var seedSymbols = new[] 
             { 

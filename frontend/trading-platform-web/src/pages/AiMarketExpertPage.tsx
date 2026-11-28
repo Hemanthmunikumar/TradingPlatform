@@ -87,7 +87,7 @@ export const AiMarketExpertPage: React.FC = () => {
   const [isSimulating, setIsSimulating] = useState(false);
   const [simMessage, setSimMessage] = useState<string | null>(null);
   const [filterAction, setFilterAction] = useState<string>('ALL');
-  const [approvalDurationSeconds, setApprovalDurationSeconds] = useState<number>(2);
+  const [approvalDurationSeconds, setApprovalDurationSeconds] = useState<number>(60);
   const [isScannersDropdownOpen, setIsScannersDropdownOpen] = useState(false);
   const [specialMonitorError, setSpecialMonitorError] = useState<string | null>(null);
   const [isAddingToMonitor, setIsAddingToMonitor] = useState(false);

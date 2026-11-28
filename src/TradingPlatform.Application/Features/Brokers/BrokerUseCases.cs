@@ -319,6 +319,11 @@ public class ToggleTradingModeHandler(
             .FirstOrDefaultAsync(bc => bc.Id == command.ConnectionId, cancellationToken)
             ?? throw new KeyNotFoundException("Broker connection not found.");
 
+        if (connection.BrokerProvider.Code == BrokerCode.Mock && command.NewMode == TradingMode.Live)
+        {
+            throw new InvalidOperationException("Mock Simulator cannot be switched to Live Trading mode.");
+        }
+
         connection.TradingMode = command.NewMode;
 
         foreach (var account in connection.TradingAccounts)
@@ -332,6 +337,56 @@ public class ToggleTradingModeHandler(
                     account.Configuration.AutoExecuteOnTimeout = false;
                 }
             }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        string maskedApiKey = "******";
+        try
+        {
+            var raw = encryptionService.Decrypt(connection.EncryptedApiKey);
+            if (raw.Length > 4) maskedApiKey = $"***{raw[^4..]}";
+        }
+        catch { }
+
+        return new BrokerConnectionDto(
+            connection.Id,
+            connection.BrokerProviderId,
+            connection.BrokerProvider.Name,
+            connection.BrokerProvider.Code,
+            connection.DisplayName,
+            connection.IsAuthenticated,
+            connection.IsActive,
+            connection.TradingEnabled,
+            connection.TradingMode,
+            connection.TokenExpiresAtUtc,
+            maskedApiKey,
+            connection.CreatedAtUtc
+        );
+    }
+}
+
+public record ToggleBrokerActiveCommand(Guid ConnectionId) : IRequest<BrokerConnectionDto>;
+
+public class ToggleBrokerActiveHandler(
+    ITradingDbContext dbContext,
+    ICredentialEncryptionService encryptionService) : IRequestHandler<ToggleBrokerActiveCommand, BrokerConnectionDto>
+{
+    public async Task<BrokerConnectionDto> Handle(ToggleBrokerActiveCommand command, CancellationToken cancellationToken)
+    {
+        var connection = await dbContext.BrokerConnections
+            .Include(bc => bc.BrokerProvider)
+            .Include(bc => bc.TradingAccounts)
+            .FirstOrDefaultAsync(bc => bc.Id == command.ConnectionId, cancellationToken)
+            ?? throw new KeyNotFoundException("Broker connection not found.");
+
+        connection.IsActive = !connection.IsActive;
+        connection.TradingEnabled = connection.IsActive;
+
+        foreach (var account in connection.TradingAccounts)
+        {
+            account.IsActive = connection.IsActive;
+            account.TradingEnabled = connection.IsActive;
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -521,7 +576,7 @@ public class GetTradingAccountsHandler(
             .Include(ta => ta.BrokerConnection)
                 .ThenInclude(bc => bc.BrokerProvider)
             .Include(ta => ta.Configuration)
-            .Where(ta => ta.IsActive)
+            .Where(ta => ta.IsActive && ta.BrokerConnection.IsActive)
             .OrderBy(ta => ta.AccountName)
             .ToListAsync(cancellationToken);
 

@@ -120,7 +120,10 @@ public class TradeApprovalService(
     {
         var now = DateTime.UtcNow;
         var query = dbContext.PendingTradeApprovals
-            .Where(p => p.Status == ApprovalStatus.Pending && p.ApprovalDeadlineUtc > now);
+            .Where(p => p.Status == ApprovalStatus.Pending
+                && p.ApprovalDeadlineUtc > now
+                && p.TradingAccount.IsActive
+                && p.TradingAccount.BrokerConnection.IsActive);
 
         if (tradingAccountId.HasValue)
         {
@@ -136,7 +139,8 @@ public class TradeApprovalService(
 
     public async Task<IReadOnlyList<PendingTradeApprovalDto>> GetApprovalHistoryAsync(Guid? tradingAccountId = null, int page = 1, int pageSize = 50, CancellationToken ct = default)
     {
-        var query = dbContext.PendingTradeApprovals.AsQueryable();
+        var query = dbContext.PendingTradeApprovals
+            .Where(p => p.TradingAccount.IsActive && p.TradingAccount.BrokerConnection.IsActive);
 
         if (tradingAccountId.HasValue)
         {
@@ -167,8 +171,7 @@ public class TradeApprovalService(
         foreach (var approval in expiredApprovals)
         {
             var account = approval.TradingAccount;
-            var isPaper = account?.TradingMode == TradingMode.Paper;
-            var autoExecute = isPaper || (account?.Configuration?.AutoExecuteOnTimeout ?? false);
+            var autoExecute = account?.Configuration?.AutoExecuteOnTimeout ?? false;
 
             if (!autoExecute)
             {
